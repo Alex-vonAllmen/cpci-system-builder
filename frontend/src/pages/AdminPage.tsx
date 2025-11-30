@@ -1,0 +1,640 @@
+import { useState, useEffect } from 'react';
+import { api } from '../services/api';
+import { Plus, Trash2, Edit } from 'lucide-react';
+import { cn } from '../lib/utils';
+
+export function AdminPage() {
+    const [products, setProducts] = useState<any[]>([]);
+    // const [rules, setRules] = useState<any[]>([]); // TODO: Implement rules management
+    const [isLoading, setIsLoading] = useState(false);
+    const [isCreating, setIsCreating] = useState(false);
+    const [isEditing, setIsEditing] = useState(false);
+    const [activeTab, setActiveTab] = useState<'products' | 'settings' | 'rules'>('products');
+    const [settings, setSettings] = useState<Record<string, string>>({});
+
+    useEffect(() => {
+        if (activeTab === 'settings') {
+            fetchSettings();
+        }
+    }, [activeTab]);
+
+    const fetchSettings = async () => {
+        try {
+            const data = await api.settings.list();
+            const settingsMap: Record<string, string> = {};
+            data.forEach((s: any) => settingsMap[s.key] = s.value);
+            setSettings(settingsMap);
+        } catch (error) {
+            console.error("Failed to fetch settings", error);
+        }
+    };
+
+    const handleSaveSetting = async (key: string, value: string) => {
+        try {
+            await api.settings.update(key, value);
+            alert("Settings saved!");
+            fetchSettings();
+        } catch (error) {
+            console.error("Failed to save setting", error);
+            alert("Failed to save setting.");
+        }
+    };
+
+    // New Product Form State
+    const [newProduct, setNewProduct] = useState({
+        id: '',
+        type: 'cpu',
+        name: '',
+        description: '',
+        power_watts: 0,
+        width_hp: 4,
+        price_1: 0,
+        price_25: 0,
+        price_50: 0,
+        price_100: 0,
+        price_250: 0,
+        price_500: 0,
+        options: '', // JSON string for editing
+        eol_date: '',
+        height_u: 0,
+        connectors: [] as string[],
+    });
+
+    const loadData = async () => {
+        setIsLoading(true);
+        try {
+            const productsData = await api.products.list();
+            setProducts(productsData);
+        } catch (error) {
+            console.error('Failed to load data:', error);
+        } finally {
+            setIsLoading(false);
+        }
+    };
+
+    useEffect(() => {
+        loadData();
+    }, []);
+
+    const handleSaveProduct = async (e: React.FormEvent) => {
+        e.preventDefault();
+        try {
+            const productData = {
+                ...newProduct,
+                options: newProduct.options ? JSON.parse(newProduct.options) : null,
+            };
+
+            if (isEditing) {
+                await api.products.update(newProduct.id, productData);
+            } else {
+                await api.products.create(productData);
+            }
+
+            setIsCreating(false);
+            setIsEditing(false);
+            loadData();
+            setNewProduct({
+                id: '',
+                type: 'cpu',
+                name: '',
+                description: '',
+                power_watts: 0,
+                width_hp: 4,
+                price_1: 0,
+                price_25: 0,
+                price_50: 0,
+                price_100: 0,
+                price_250: 0,
+                price_500: 0,
+                options: '',
+                eol_date: '',
+                height_u: 0,
+                connectors: [],
+            });
+        } catch (error) {
+            console.error('Failed to save product:', error);
+            alert('Failed to save product. Check console for details. Ensure Options is valid JSON.');
+        }
+    };
+
+    const handleEditProduct = (product: any) => {
+        setNewProduct({
+            id: product.id,
+            type: product.type,
+            name: product.name,
+            description: product.description || '',
+            power_watts: product.power_watts,
+            width_hp: product.width_hp,
+            price_1: product.price1,
+            price_25: product.price25,
+            price_50: product.price50,
+            price_100: product.price100,
+            price_250: product.price250,
+            price_500: product.price500,
+            options: product.options ? JSON.stringify(product.options, null, 2) : '',
+            eol_date: product.eol_date || '',
+            height_u: product.heightU || 0,
+            connectors: product.connectors || [],
+        });
+        setIsEditing(true);
+        setIsCreating(true); // Reuse the create modal
+    };
+
+    const handleDeleteProduct = async (id: string) => {
+        if (confirm('Are you sure you want to delete this product?')) {
+            try {
+                await api.products.delete(id);
+                loadData();
+            } catch (error) {
+                console.error('Failed to delete product:', error);
+            }
+        }
+    };
+
+    return (
+        <div className="min-h-screen bg-slate-50 p-8">
+            <div className="max-w-7xl mx-auto space-y-8">
+                <div className="flex justify-between items-center">
+                    <div>
+                        <h1 className="text-3xl font-bold text-slate-900">Admin Dashboard</h1>
+                        <p className="text-slate-500">Manage products and system settings.</p>
+                    </div>
+                    <div className="flex bg-white rounded-lg p-1 border border-slate-200">
+                        <button
+                            onClick={() => setActiveTab('products')}
+                            className={cn(
+                                "px-4 py-2 text-sm font-medium rounded-md transition-colors",
+                                activeTab === 'products' ? "bg-blue-50 text-blue-700" : "text-slate-600 hover:bg-slate-50"
+                            )}
+                        >
+                            Products
+                        </button>
+                        <button
+                            onClick={() => setActiveTab('settings')}
+                            className={cn(
+                                "px-4 py-2 text-sm font-medium rounded-md transition-colors",
+                                activeTab === 'settings' ? "bg-blue-50 text-blue-700" : "text-slate-600 hover:bg-slate-50"
+                            )}
+                        >
+                            Settings
+                        </button>
+                        <button
+                            onClick={() => setActiveTab('rules')}
+                            className={cn(
+                                "px-4 py-2 text-sm font-medium rounded-md transition-colors",
+                                activeTab === 'rules' ? "bg-blue-50 text-blue-700" : "text-slate-600 hover:bg-slate-50"
+                            )}
+                        >
+                            Rules
+                        </button>
+                    </div>
+                </div>
+
+                {activeTab === 'products' ? (
+                    <div className="space-y-6">
+                        <div className="flex justify-between items-center">
+                            <h2 className="text-xl font-bold text-slate-900">Product Catalog</h2>
+                            <button
+                                onClick={() => {
+                                    setNewProduct({
+                                        id: '', type: 'cpu', name: '', description: '', power_watts: 0, width_hp: 4,
+                                        price_1: 0, price_25: 0, price_50: 0, price_100: 0, price_250: 0, price_500: 0,
+                                        options: '', eol_date: '', height_u: 0, connectors: []
+                                    });
+                                    setIsEditing(false);
+                                    setIsCreating(true);
+                                }}
+                                className="flex items-center gap-2 bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition-colors"
+                            >
+                                <Plus size={18} />
+                                Add Product
+                            </button>
+                        </div>
+
+                        {isCreating && (
+                            <div className="bg-white p-6 rounded-xl shadow-sm border border-slate-200 animate-in fade-in slide-in-from-top-4">
+                                <h3 className="text-lg font-bold mb-4">{isEditing ? 'Edit Product' : 'New Product'}</h3>
+                                <form onSubmit={handleSaveProduct} className="grid grid-cols-2 gap-6">
+                                    <div className="space-y-2">
+                                        <label className="text-sm font-medium text-slate-700">Part Number (ID)</label>
+                                        <input
+                                            required
+                                            disabled={isEditing}
+                                            className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none disabled:bg-slate-100"
+                                            value={newProduct.id}
+                                            onChange={e => setNewProduct({ ...newProduct, id: e.target.value })}
+                                        />
+                                    </div>
+                                    <div className="space-y-2">
+                                        <label className="text-sm font-medium text-slate-700">Type</label>
+                                        <select
+                                            className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none"
+                                            value={newProduct.type}
+                                            onChange={e => setNewProduct({ ...newProduct, type: e.target.value })}
+                                        >
+                                            <option value="cpu">CPU</option>
+                                            <option value="storage">Storage</option>
+                                            <option value="network">Network</option>
+                                            <option value="io">I/O</option>
+                                            <option value="chassis">Chassis</option>
+                                            <option value="psu">PSU</option>
+                                            <option value="accessory">Accessory</option>
+                                        </select>
+                                    </div>
+                                    <div className="col-span-2 space-y-2">
+                                        <label className="text-sm font-medium text-slate-700">Name</label>
+                                        <input
+                                            required
+                                            className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none"
+                                            value={newProduct.name}
+                                            onChange={e => setNewProduct({ ...newProduct, name: e.target.value })}
+                                        />
+                                    </div>
+                                    <div className="col-span-2 space-y-2">
+                                        <label className="text-sm font-medium text-slate-700">Description</label>
+                                        <textarea
+                                            className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none"
+                                            value={newProduct.description}
+                                            onChange={e => setNewProduct({ ...newProduct, description: e.target.value })}
+                                        />
+                                    </div>
+                                    <div className="space-y-2">
+                                        <label className="text-sm font-medium text-slate-700">Power (Watts)</label>
+                                        <input
+                                            type="number"
+                                            className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none"
+                                            value={newProduct.power_watts}
+                                            onChange={e => setNewProduct({ ...newProduct, power_watts: Number(e.target.value) })}
+                                        />
+                                    </div>
+                                    <div className="space-y-2">
+                                        <label className="text-sm font-medium text-slate-700">Width (HP)</label>
+                                        <input
+                                            type="number"
+                                            className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none"
+                                            value={newProduct.width_hp}
+                                            onChange={e => setNewProduct({ ...newProduct, width_hp: Number(e.target.value) })}
+                                        />
+                                    </div>
+                                    <div className="space-y-2">
+                                        <label className="text-sm font-medium text-slate-700">EOL Date</label>
+                                        <input
+                                            type="date"
+                                            className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none"
+                                            value={newProduct.eol_date}
+                                            onChange={e => setNewProduct({ ...newProduct, eol_date: e.target.value })}
+                                        />
+                                    </div>
+                                    <div className="space-y-2">
+                                        <label className="text-sm font-medium text-slate-700">Height (U)</label>
+                                        <input
+                                            type="number"
+                                            className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none"
+                                            value={newProduct.height_u || ''}
+                                            onChange={e => setNewProduct({ ...newProduct, height_u: Number(e.target.value) })}
+                                        />
+                                    </div>
+
+                                    <div className="col-span-2 space-y-2">
+                                        <label className="text-sm font-medium text-slate-700">Connectors Present</label>
+                                        <div className="flex gap-4">
+                                            {['P1', 'P2', 'P3', 'P4', 'P5', 'P6'].map(conn => (
+                                                <label key={conn} className="flex items-center gap-2 cursor-pointer">
+                                                    <input
+                                                        type="checkbox"
+                                                        className="w-4 h-4 text-blue-600 rounded border-slate-300 focus:ring-blue-500"
+                                                        checked={(newProduct.connectors || []).includes(conn)}
+                                                        onChange={e => {
+                                                            const current = newProduct.connectors || [];
+                                                            if (e.target.checked) {
+                                                                setNewProduct({ ...newProduct, connectors: [...current, conn].sort() });
+                                                            } else {
+                                                                setNewProduct({ ...newProduct, connectors: current.filter(c => c !== conn) });
+                                                            }
+                                                        }}
+                                                    />
+                                                    <span className="text-sm text-slate-700">{conn}</span>
+                                                </label>
+                                            ))}
+                                        </div>
+                                    </div>
+
+                                    <div className="col-span-2 grid grid-cols-3 gap-4 border-t pt-4 mt-2">
+                                        <h4 className="col-span-3 font-medium text-slate-700">Tiered Pricing (€)</h4>
+                                        <div className="space-y-1">
+                                            <label className="text-xs text-slate-500">1+ Qty</label>
+                                            <input type="number" className="w-full px-3 py-2 border rounded-lg" value={newProduct.price_1} onChange={e => setNewProduct({ ...newProduct, price_1: Number(e.target.value) })} />
+                                        </div>
+                                        <div className="space-y-1">
+                                            <label className="text-xs text-slate-500">25+ Qty</label>
+                                            <input type="number" className="w-full px-3 py-2 border rounded-lg" value={newProduct.price_25} onChange={e => setNewProduct({ ...newProduct, price_25: Number(e.target.value) })} />
+                                        </div>
+                                        <div className="space-y-1">
+                                            <label className="text-xs text-slate-500">50+ Qty</label>
+                                            <input type="number" className="w-full px-3 py-2 border rounded-lg" value={newProduct.price_50} onChange={e => setNewProduct({ ...newProduct, price_50: Number(e.target.value) })} />
+                                        </div>
+                                        <div className="space-y-1">
+                                            <label className="text-xs text-slate-500">100+ Qty</label>
+                                            <input type="number" className="w-full px-3 py-2 border rounded-lg" value={newProduct.price_100} onChange={e => setNewProduct({ ...newProduct, price_100: Number(e.target.value) })} />
+                                        </div>
+                                        <div className="space-y-1">
+                                            <label className="text-xs text-slate-500">250+ Qty</label>
+                                            <input type="number" className="w-full px-3 py-2 border rounded-lg" value={newProduct.price_250} onChange={e => setNewProduct({ ...newProduct, price_250: Number(e.target.value) })} />
+                                        </div>
+                                        <div className="space-y-1">
+                                            <label className="text-xs text-slate-500">500+ Qty</label>
+                                            <input type="number" className="w-full px-3 py-2 border rounded-lg" value={newProduct.price_500} onChange={e => setNewProduct({ ...newProduct, price_500: Number(e.target.value) })} />
+                                        </div>
+                                    </div>
+
+                                    <div className="col-span-2 space-y-2 border-t pt-4 mt-2">
+                                        <label className="text-sm font-medium">Configuration Options (JSON)</label>
+                                        <textarea
+                                            className="w-full px-3 py-2 border rounded-lg font-mono text-xs h-32"
+                                            value={newProduct.options}
+                                            onChange={e => setNewProduct({ ...newProduct, options: e.target.value })}
+                                            placeholder='[{"id": "ram", "label": "Memory", "type": "select", "choices": [{"value": "16GB", "eol_date": "2028-12-31"}]}]'
+                                        />
+                                        <p className="text-xs text-slate-500">Enter valid JSON for product options.</p>
+                                    </div>
+
+                                    <div className="col-span-2 flex justify-end gap-2 mt-4">
+                                        <button type="button" onClick={() => setIsCreating(false)} className="px-4 py-2 text-slate-600 hover:bg-slate-50 rounded-lg">Cancel</button>
+                                        <button type="submit" className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700">
+                                            {isEditing ? 'Update Product' : 'Create Product'}
+                                        </button>
+                                    </div>
+                                </form>
+                            </div>
+                        )}
+
+                        <div className="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden">
+                            <table className="w-full text-left">
+                                <thead className="bg-slate-50 border-b border-slate-200">
+                                    <tr>
+                                        <th className="px-6 py-3 text-sm font-medium text-slate-500">ID</th>
+                                        <th className="px-6 py-3 text-sm font-medium text-slate-500">Type</th>
+                                        <th className="px-6 py-3 text-sm font-medium text-slate-500">Name</th>
+                                        <th className="px-6 py-3 text-sm font-medium text-slate-500">Power</th>
+                                        <th className="px-6 py-3 text-sm font-medium text-slate-500">Price (1+)</th>
+                                        <th className="px-6 py-3 text-sm font-medium text-slate-500">Actions</th>
+                                    </tr>
+                                </thead>
+                                <tbody className="divide-y divide-slate-100">
+                                    {isLoading ? (
+                                        <tr><td colSpan={6} className="p-8 text-center text-slate-500">Loading...</td></tr>
+                                    ) : products.length === 0 ? (
+                                        <tr><td colSpan={6} className="p-8 text-center text-slate-500">No products found.</td></tr>
+                                    ) : (
+                                        products.map(product => (
+                                            <tr key={product.id} className="hover:bg-slate-50">
+                                                <td className="px-6 py-4 font-mono text-sm">{product.id}</td>
+                                                <td className="px-6 py-4 text-sm capitalize">{product.type}</td>
+                                                <td className="px-6 py-4 text-sm font-medium">{product.name}</td>
+                                                <td className="px-6 py-4 text-sm">{product.power_watts || product.powerWatts}W</td>
+                                                <td className="px-6 py-4 text-sm">€{product.price1}</td>
+                                                <td className="px-6 py-4 flex gap-2">
+                                                    <button
+                                                        onClick={() => handleEditProduct(product)}
+                                                        className="p-1 text-blue-600 hover:bg-blue-50 rounded-lg transition-colors"
+                                                        title="Edit Product"
+                                                    >
+                                                        <Edit size={18} />
+                                                    </button>
+                                                    <button
+                                                        onClick={() => handleDeleteProduct(product.id)}
+                                                        className="p-1 text-red-600 hover:bg-red-50 rounded-lg transition-colors"
+                                                        title="Delete Product"
+                                                    >
+                                                        <Trash2 size={18} />
+                                                    </button>
+                                                </td>
+                                            </tr>
+                                        ))
+                                    )}
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                ) : activeTab === 'settings' ? (
+                    <div className="bg-white p-6 rounded-xl shadow-sm border border-slate-200">
+                        <h2 className="text-xl font-bold text-slate-900 mb-6">System Settings</h2>
+                        <div className="max-w-md space-y-6">
+                            <div className="space-y-2">
+                                <label className="block text-sm font-medium text-slate-700">
+                                    Central Quote Email Address
+                                </label>
+                                <div className="flex gap-2">
+                                    <input
+                                        type="email"
+                                        className="flex-1 px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none"
+                                        value={settings['central_email'] || ''}
+                                        onChange={(e) => setSettings({ ...settings, 'central_email': e.target.value })}
+                                        placeholder="email@example.com"
+                                    />
+                                    <button
+                                        onClick={() => handleSaveSetting('central_email', settings['central_email'])}
+                                        className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 font-medium"
+                                    >
+                                        Save
+                                    </button>
+                                </div>
+                                <p className="text-xs text-slate-500">
+                                    All quote requests will be sent to this address in addition to the requester.
+                                </p>
+                            </div>
+                        </div>
+                    </div>
+                ) : (
+                    <RulesManager />
+                )}
+            </div>
+        </div>
+    );
+}
+
+function RulesManager() {
+    const [rules, setRules] = useState<any[]>([]);
+    const [isLoading, setIsLoading] = useState(false);
+    const [isCreating, setIsCreating] = useState(false);
+    const [newRule, setNewRule] = useState({
+        id: 0,
+        description: '',
+        definition: JSON.stringify({
+            conditions: [],
+            actions: []
+        }, null, 2)
+    });
+
+    const [isEditing, setIsEditing] = useState(false);
+
+    const loadRules = async () => {
+        setIsLoading(true);
+        try {
+            const data = await api.rules.list();
+            setRules(data);
+        } catch (error) {
+            console.error("Failed to load rules", error);
+        } finally {
+            setIsLoading(false);
+        }
+    };
+
+    useEffect(() => {
+        loadRules();
+    }, []);
+
+    const handleSaveRule = async (e: React.FormEvent) => {
+        e.preventDefault();
+        try {
+            // Validate JSON
+            const definition = JSON.parse(newRule.definition);
+
+            const ruleData = {
+                description: newRule.description,
+                definition: definition
+            };
+
+            if (isEditing) {
+                await api.rules.update(newRule.id, ruleData);
+            } else {
+                await api.rules.create(ruleData);
+            }
+
+            setIsCreating(false);
+            setIsEditing(false);
+            loadRules();
+            setNewRule({
+                id: 0,
+                description: '',
+                definition: JSON.stringify({ conditions: [], actions: [] }, null, 2)
+            });
+        } catch (error) {
+            alert("Invalid JSON definition");
+        }
+    };
+
+    const handleEditRule = (rule: any) => {
+        setNewRule({
+            id: rule.id,
+            description: rule.description,
+            definition: JSON.stringify(rule.definition, null, 2)
+        });
+        setIsEditing(true);
+        setIsCreating(true);
+    };
+
+    const handleDeleteRule = async (id: number) => {
+        try {
+            await api.rules.delete(id);
+            loadRules();
+        } catch (error) {
+            console.error('Failed to delete rule:', error);
+        }
+    };
+
+    return (
+        <div className="space-y-6">
+            <div className="flex justify-between items-center">
+                <h2 className="text-xl font-bold text-slate-900">Configuration Rules</h2>
+                <button
+                    onClick={() => {
+                        setNewRule({
+                            id: 0,
+                            description: '',
+                            definition: JSON.stringify({ conditions: [], actions: [] }, null, 2)
+                        });
+                        setIsEditing(false);
+                        setIsCreating(true);
+                    }}
+                    className="flex items-center gap-2 bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition-colors"
+                >
+                    <Plus size={18} />
+                    Add Rule
+                </button>
+            </div>
+
+            {isCreating && (
+                <div className="bg-white p-6 rounded-xl shadow-sm border border-slate-200 animate-in fade-in slide-in-from-top-4">
+                    <h3 className="text-lg font-bold mb-4">{isEditing ? 'Edit Rule' : 'New Rule'}</h3>
+                    <form onSubmit={handleSaveRule} className="space-y-4">
+                        <div className="space-y-2">
+                            <label className="text-sm font-medium text-slate-700">Description</label>
+                            <input
+                                required
+                                className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none"
+                                value={newRule.description}
+                                onChange={e => setNewRule({ ...newRule, description: e.target.value })}
+                                placeholder="e.g. If G28 in slot 1, no G239 in slot 2"
+                            />
+                        </div>
+                        <div className="space-y-2">
+                            <label className="text-sm font-medium text-slate-700">Rule Definition (JSON)</label>
+                            <textarea
+                                required
+                                className="w-full px-3 py-2 border border-slate-300 rounded-lg font-mono text-xs h-64"
+                                value={newRule.definition}
+                                onChange={e => setNewRule({ ...newRule, definition: e.target.value })}
+                            />
+                            <p className="text-xs text-slate-500">
+                                Define conditions and actions in JSON format.
+                            </p>
+                        </div>
+                        <div className="flex justify-end gap-2">
+                            <button type="button" onClick={() => setIsCreating(false)} className="px-4 py-2 text-slate-600 hover:bg-slate-50 rounded-lg">Cancel</button>
+                            <button type="submit" className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700">
+                                {isEditing ? 'Update Rule' : 'Create Rule'}
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            )}
+
+            <div className="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden">
+                <table className="w-full text-left">
+                    <thead className="bg-slate-50 border-b border-slate-200">
+                        <tr>
+                            <th className="px-6 py-3 text-sm font-medium text-slate-500">ID</th>
+                            <th className="px-6 py-3 text-sm font-medium text-slate-500">Description</th>
+                            <th className="px-6 py-3 text-sm font-medium text-slate-500">Definition</th>
+                            <th className="px-6 py-3 text-sm font-medium text-slate-500">Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody className="divide-y divide-slate-100">
+                        {isLoading ? (
+                            <tr><td colSpan={4} className="p-8 text-center text-slate-500">Loading...</td></tr>
+                        ) : rules.length === 0 ? (
+                            <tr><td colSpan={4} className="p-8 text-center text-slate-500">No rules found.</td></tr>
+                        ) : (
+                            rules.map(rule => (
+                                <tr key={rule.id} className="hover:bg-slate-50">
+                                    <td className="px-6 py-4 font-mono text-sm">{rule.id}</td>
+                                    <td className="px-6 py-4 text-sm">{rule.description}</td>
+                                    <td className="px-6 py-4 text-sm font-mono text-xs text-slate-500 truncate max-w-md">
+                                        {JSON.stringify(rule.definition)}
+                                    </td>
+                                    <td className="px-6 py-4 flex gap-2">
+                                        <button
+                                            onClick={() => handleEditRule(rule)}
+                                            className="p-1 text-blue-600 hover:bg-blue-50 rounded-lg transition-colors"
+                                            title="Edit Rule"
+                                        >
+                                            <Edit size={18} />
+                                        </button>
+                                        <button
+                                            onClick={() => handleDeleteRule(rule.id)}
+                                            className="p-1 text-red-600 hover:bg-red-50 rounded-lg transition-colors"
+                                            title="Delete Rule"
+                                        >
+                                            <Trash2 size={18} />
+                                        </button>
+                                    </td>
+                                </tr>
+                            ))
+                        )}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    );
+}
