@@ -68,6 +68,14 @@ A modern, web-based configurator for CompactPCI (cPCI) systems. This application
     ```
     The application will be available at `http://localhost:5173`.
 
+### Quick Start
+
+To start both the backend and frontend simultaneously, you can use the provided helper script:
+
+```bash
+./start-app.sh
+```
+
 ## Usage
 
 ### User Flow
