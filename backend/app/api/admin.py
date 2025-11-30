@@ -54,6 +54,33 @@ def read_products(skip: int = 0, limit: int = 100, db: Session = Depends(get_db)
     products = db.query(models.Product).offset(skip).limit(limit).all()
     return products
 
+@router.get("/products/export", response_model=List[schemas.Product])
+def export_products(db: Session = Depends(get_db), admin: str = Depends(get_current_admin)):
+    products = db.query(models.Product).all()
+    return products
+
+@router.post("/products/import")
+def import_products(products: List[schemas.ProductCreate], db: Session = Depends(get_db), admin: str = Depends(get_current_admin)):
+    added = 0
+    updated = 0
+    
+    for product_data in products:
+        existing = db.query(models.Product).filter(models.Product.id == product_data.id).first()
+        if existing:
+            # Update
+            data = product_data.model_dump(exclude_unset=True)
+            for key, value in data.items():
+                setattr(existing, key, value)
+            updated += 1
+        else:
+            # Create
+            new_product = models.Product(**product_data.model_dump())
+            db.add(new_product)
+            added += 1
+            
+    db.commit()
+    return {"added": added, "updated": updated}
+
 @router.get("/products/{product_id}", response_model=schemas.Product)
 def read_product(product_id: str, db: Session = Depends(get_db)):
     product = db.query(models.Product).filter(models.Product.id == product_id).first()
@@ -98,6 +125,38 @@ def create_rule(rule: schemas.RuleCreate, db: Session = Depends(get_db), admin: 
 def read_rules(skip: int = 0, limit: int = 100, db: Session = Depends(get_db)):
     rules = db.query(models.Rule).offset(skip).limit(limit).all()
     return rules
+
+@router.get("/rules/export", response_model=List[schemas.Rule])
+def export_rules(db: Session = Depends(get_db), admin: str = Depends(get_current_admin)):
+    rules = db.query(models.Rule).all()
+    return rules
+
+@router.post("/rules/import")
+def import_rules(rules: List[schemas.RuleImport], db: Session = Depends(get_db), admin: str = Depends(get_current_admin)):
+    added = 0
+    updated = 0
+    
+    for rule_data in rules:
+        if rule_data.id:
+            existing = db.query(models.Rule).filter(models.Rule.id == rule_data.id).first()
+            if existing:
+                # Update
+                existing.description = rule_data.description
+                existing.definition = rule_data.definition
+                updated += 1
+                continue
+        
+        # Create (if no ID or ID not found - though if ID provided but not found, maybe we should create with that ID? 
+        # Auto-increment usually handles IDs. Let's treat "ID not found" as "Create new" but ignore the ID to let DB assign one.
+        # Or should we force the ID? For migration, forcing ID is better.
+        # But SQLite/Postgres auto-increment might conflict.
+        # Let's stick to: If ID exists in DB -> Update. Else -> Create new (ignoring input ID).
+        new_rule = models.Rule(description=rule_data.description, definition=rule_data.definition)
+        db.add(new_rule)
+        added += 1
+            
+    db.commit()
+    return {"added": added, "updated": updated}
 
 @router.delete("/rules/{rule_id}")
 def delete_rule(rule_id: int, db: Session = Depends(get_db), admin: str = Depends(get_current_admin)):

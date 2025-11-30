@@ -65,6 +65,25 @@ export const api = {
                 headers: getHeaders(),
             });
         },
+        export: async () => {
+            const res = await fetch(`${API_BASE_URL}/admin/products/export`, {
+                headers: getHeaders(),
+            });
+            return res.blob();
+        },
+        import: async (file: File) => {
+            // We need to read the file and send it as JSON
+            const text = await file.text();
+            const json = JSON.parse(text); // Validate JSON client-side first
+
+            const res = await fetch(`${API_BASE_URL}/admin/products/import`, {
+                method: 'POST',
+                headers: getHeaders(),
+                body: JSON.stringify(json),
+            });
+            if (!res.ok) throw new Error('Import failed');
+            return res.json();
+        },
     },
     rules: {
         list: async () => {
@@ -92,6 +111,24 @@ export const api = {
                 method: 'DELETE',
                 headers: getHeaders(),
             });
+        },
+        export: async () => {
+            const res = await fetch(`${API_BASE_URL}/admin/rules/export`, {
+                headers: getHeaders(),
+            });
+            return res.blob();
+        },
+        import: async (file: File) => {
+            const text = await file.text();
+            const json = JSON.parse(text);
+
+            const res = await fetch(`${API_BASE_URL}/admin/rules/import`, {
+                method: 'POST',
+                headers: getHeaders(),
+                body: JSON.stringify(json),
+            });
+            if (!res.ok) throw new Error('Import failed');
+            return res.json();
         },
     },
     settings: {

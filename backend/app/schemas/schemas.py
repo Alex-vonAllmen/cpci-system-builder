@@ -42,6 +42,9 @@ class Rule(RuleBase):
     class Config:
         from_attributes = True
 
+class RuleImport(RuleBase):
+    id: Optional[int] = None
+
 # Configuration Schemas
 class ConfigItemBase(BaseModel):
     product_id: str

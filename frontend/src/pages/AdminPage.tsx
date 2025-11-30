@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import { api } from '../services/api';
 import { SubConfigModal } from '../components/SubConfigModal';
 import { useToast } from '../components/ui/Toast'; // Corrected path for useToast
-import { Plus, Trash2, Edit } from 'lucide-react';
+import { Plus, Trash2, Edit, Download, Upload } from 'lucide-react';
 import { cn } from '../lib/utils';
 
 export function AdminPage() {
@@ -14,7 +14,8 @@ export function AdminPage() {
     const [activeTab, setActiveTab] = useState<'products' | 'settings' | 'rules'>('products');
     const [settings, setSettings] = useState<Record<string, string>>({});
     const [deleteConfirmation, setDeleteConfirmation] = useState<{ id: string, name: string } | null>(null); // For products
-    const { toast } = useToast();
+    const [importResult, setImportResult] = useState<{ added: number, updated: number } | null>(null);
+    const toast = useToast();
 
     // Settings management
     useEffect(() => {
@@ -64,6 +65,8 @@ export function AdminPage() {
         eol_date: '',
         height_u: 0,
         connectors: [] as string[],
+        image_url: '',
+        url: '',
     });
 
     const loadData = async () => {
@@ -117,6 +120,8 @@ export function AdminPage() {
                 eol_date: '',
                 height_u: 0,
                 connectors: [],
+                image_url: '',
+                url: '',
             });
             toast.success(isEditing ? "Product updated successfully." : "Product created successfully.");
         } catch (error) {
@@ -143,6 +148,8 @@ export function AdminPage() {
             eol_date: product.eol_date || '',
             height_u: product.heightU || 0,
             connectors: product.connectors || [],
+            image_url: product.image_url || '',
+            url: product.url || '',
         });
         setIsEditing(true);
         setIsCreating(true); // Reuse the create modal
@@ -157,6 +164,40 @@ export function AdminPage() {
         } catch (error) {
             console.error('Failed to delete product:', error);
             toast.error("Failed to delete product.");
+        }
+    };
+
+    const handleExportProducts = async () => {
+        try {
+            const blob = await api.products.export();
+            const url = window.URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `products_export_${new Date().toISOString().split('T')[0]}.json`;
+            document.body.appendChild(a);
+            a.click();
+            window.URL.revokeObjectURL(url);
+            document.body.removeChild(a);
+            toast.success("Products exported successfully.");
+        } catch (error) {
+            console.error("Export failed", error);
+            toast.error("Failed to export products.");
+        }
+    };
+
+    const handleImportProducts = async (e: React.ChangeEvent<HTMLInputElement>) => {
+        const file = e.target.files?.[0];
+        if (!file) return;
+
+        try {
+            const result = await api.products.import(file);
+            setImportResult(result);
+            loadData();
+        } catch (error) {
+            console.error("Import failed", error);
+            toast.error("Failed to import products. Check JSON format.");
+        } finally {
+            e.target.value = ''; // Reset input
         }
     };
 
@@ -203,21 +244,35 @@ export function AdminPage() {
                     <div className="space-y-6">
                         <div className="flex justify-between items-center">
                             <h2 className="text-xl font-bold text-slate-900">Product Catalog</h2>
-                            <button
-                                onClick={() => {
-                                    setNewProduct({
-                                        id: '', type: 'cpu', name: '', description: '', power_watts: 0, width_hp: 4,
-                                        price_1: 0, price_25: 0, price_50: 0, price_100: 0, price_250: 0, price_500: 0,
-                                        options: '', eol_date: '', height_u: 0, connectors: []
-                                    });
-                                    setIsEditing(false);
-                                    setIsCreating(true);
-                                }}
-                                className="flex items-center gap-2 bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition-colors"
-                            >
-                                <Plus size={18} />
-                                Add Product
-                            </button>
+                            <div className="flex gap-2">
+                                <button
+                                    onClick={handleExportProducts}
+                                    className="flex items-center gap-2 bg-white border border-slate-300 text-slate-700 px-4 py-2 rounded-lg hover:bg-slate-50 transition-colors"
+                                >
+                                    <Download size={18} />
+                                    Export
+                                </button>
+                                <label className="flex items-center gap-2 bg-white border border-slate-300 text-slate-700 px-4 py-2 rounded-lg hover:bg-slate-50 transition-colors cursor-pointer">
+                                    <Upload size={18} />
+                                    Import
+                                    <input type="file" accept=".json" className="hidden" onChange={handleImportProducts} />
+                                </label>
+                                <button
+                                    onClick={() => {
+                                        setNewProduct({
+                                            id: '', type: 'cpu', name: '', description: '', power_watts: 0, width_hp: 4,
+                                            price_1: 0, price_25: 0, price_50: 0, price_100: 0, price_250: 0, price_500: 0,
+                                            options: '', eol_date: '', height_u: 0, connectors: [], image_url: '', url: ''
+                                        });
+                                        setIsEditing(false);
+                                        setIsCreating(true);
+                                    }}
+                                    className="flex items-center gap-2 bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition-colors"
+                                >
+                                    <Plus size={18} />
+                                    Add Product
+                                </button>
+                            </div>
                         </div>
 
                         {isCreating && (
@@ -265,6 +320,24 @@ export function AdminPage() {
                                             className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none"
                                             value={newProduct.description}
                                             onChange={e => setNewProduct({ ...newProduct, description: e.target.value })}
+                                        />
+                                    </div>
+                                    <div className="col-span-2 space-y-2">
+                                        <label className="text-sm font-medium text-slate-700">Image URL</label>
+                                        <input
+                                            className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none"
+                                            value={newProduct.image_url}
+                                            onChange={e => setNewProduct({ ...newProduct, image_url: e.target.value })}
+                                            placeholder="https://example.com/image.png"
+                                        />
+                                    </div>
+                                    <div className="col-span-2 space-y-2">
+                                        <label className="text-sm font-medium text-slate-700">Product URL</label>
+                                        <input
+                                            className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none"
+                                            value={newProduct.url}
+                                            onChange={e => setNewProduct({ ...newProduct, url: e.target.value })}
+                                            placeholder="https://www.duagon.com/products/details/..."
                                         />
                                     </div>
                                     <div className="space-y-2">
@@ -472,6 +545,37 @@ export function AdminPage() {
                     </p>
                 </div>
             </SubConfigModal>
+
+            {/* Import Result Modal */}
+            <SubConfigModal
+                isOpen={!!importResult}
+                onClose={() => setImportResult(null)}
+                onSave={() => setImportResult(null)}
+                title="Import Successful"
+                saveLabel="OK"
+            >
+                <div className="space-y-4">
+                    <div className="flex items-center gap-3 text-green-600 bg-green-50 p-4 rounded-lg">
+                        <div className="bg-green-100 p-2 rounded-full">
+                            <Upload size={24} />
+                        </div>
+                        <div>
+                            <h4 className="font-bold">Import Complete</h4>
+                            <p className="text-sm text-green-800">The product data has been successfully imported.</p>
+                        </div>
+                    </div>
+                    <div className="grid grid-cols-2 gap-4">
+                        <div className="bg-slate-50 p-4 rounded-lg text-center border border-slate-200">
+                            <div className="text-3xl font-bold text-slate-900">{importResult?.added}</div>
+                            <div className="text-sm text-slate-500 font-medium">New Products Added</div>
+                        </div>
+                        <div className="bg-slate-50 p-4 rounded-lg text-center border border-slate-200">
+                            <div className="text-3xl font-bold text-slate-900">{importResult?.updated}</div>
+                            <div className="text-sm text-slate-500 font-medium">Products Updated</div>
+                        </div>
+                    </div>
+                </div>
+            </SubConfigModal>
         </div>
     );
 }
@@ -491,7 +595,7 @@ function RulesManager() {
 
     const [isEditing, setIsEditing] = useState(false);
     const [deleteConfirmation, setDeleteConfirmation] = useState<{ id: number, description: string } | null>(null); // For rules
-    const { toast } = useToast();
+    const toast = useToast();
 
     const loadRules = async () => {
         setIsLoading(true);
@@ -565,25 +669,73 @@ function RulesManager() {
         }
     };
 
+    const handleExportRules = async () => {
+        try {
+            const blob = await api.rules.export();
+            const url = window.URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `rules_export_${new Date().toISOString().split('T')[0]}.json`;
+            document.body.appendChild(a);
+            a.click();
+            window.URL.revokeObjectURL(url);
+            document.body.removeChild(a);
+            toast.success("Rules exported successfully.");
+        } catch (error) {
+            console.error("Export failed", error);
+            toast.error("Failed to export rules.");
+        }
+    };
+
+    const handleImportRules = async (e: React.ChangeEvent<HTMLInputElement>) => {
+        const file = e.target.files?.[0];
+        if (!file) return;
+
+        try {
+            const result = await api.rules.import(file);
+            toast.success(`Imported: ${result.added} added, ${result.updated} updated.`);
+            loadRules();
+        } catch (error) {
+            console.error("Import failed", error);
+            toast.error("Failed to import rules. Check JSON format.");
+        } finally {
+            e.target.value = '';
+        }
+    };
+
     return (
         <div className="space-y-6">
             <div className="flex justify-between items-center">
                 <h2 className="text-xl font-bold text-slate-900">Configuration Rules</h2>
-                <button
-                    onClick={() => {
-                        setNewRule({
-                            id: 0,
-                            description: '',
-                            definition: JSON.stringify({ conditions: [], actions: [] }, null, 2)
-                        });
-                        setIsEditing(false);
-                        setIsCreating(true);
-                    }}
-                    className="flex items-center gap-2 bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition-colors"
-                >
-                    <Plus size={18} />
-                    Add Rule
-                </button>
+                <div className="flex gap-2">
+                    <button
+                        onClick={handleExportRules}
+                        className="flex items-center gap-2 bg-white border border-slate-300 text-slate-700 px-4 py-2 rounded-lg hover:bg-slate-50 transition-colors"
+                    >
+                        <Download size={18} />
+                        Export
+                    </button>
+                    <label className="flex items-center gap-2 bg-white border border-slate-300 text-slate-700 px-4 py-2 rounded-lg hover:bg-slate-50 transition-colors cursor-pointer">
+                        <Upload size={18} />
+                        Import
+                        <input type="file" accept=".json" className="hidden" onChange={handleImportRules} />
+                    </label>
+                    <button
+                        onClick={() => {
+                            setNewRule({
+                                id: 0,
+                                description: '',
+                                definition: JSON.stringify({ conditions: [], actions: [] }, null, 2)
+                            });
+                            setIsEditing(false);
+                            setIsCreating(true);
+                        }}
+                        className="flex items-center gap-2 bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition-colors"
+                    >
+                        <Plus size={18} />
+                        Add Rule
+                    </button>
+                </div>
             </div>
 
             {isCreating && (
