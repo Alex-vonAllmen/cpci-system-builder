@@ -1,16 +1,33 @@
-# CPCI System Builder
+# cPCI System Builder
 
-A web-based configurator for CompactPCI systems, allowing users to build custom systems by selecting chassis, power supplies, and components for individual slots. It includes a robust rules engine to ensure configuration validity and an admin panel for managing products and rules.
+A modern, web-based configurator for CompactPCI (cPCI) systems. This application allows users to design custom cPCI systems by selecting chassis, power supplies, and various plugin components (CPU, Storage, Network, I/O) while enforcing compatibility rules.
 
-## Installation & Setup
+## Features
+
+*   **Visual System Topology**: Interactive visualization of the system backplane and slots.
+*   **Rule-Based Configuration**: Intelligent rule engine prevents incompatible component selections (e.g., "If G28 is in Slot 1, G239 is forbidden in Slot 2").
+*   **Dynamic Pricing**: Real-time price calculation with tiered pricing support (1+, 25+, 50+, etc.).
+*   **Admin Dashboard**: comprehensive admin panel to manage:
+    *   **Products**: Create, edit, and delete components.
+    *   **Rules**: Define flexible JSON-based compatibility rules.
+    *   **Settings**: Configure system-wide settings like the central quote email.
+*   **Quote Generation**: Generate PDF quotes with detailed configuration summaries.
+*   **Modern UI**: Built with React, Tailwind CSS, and Shadcn UI for a polished user experience.
+*   **Toast Notifications**: Non-intrusive feedback for user actions and errors.
+
+## Tech Stack
+
+*   **Frontend**: React, TypeScript, Vite, Tailwind CSS, Zustand (State Management), React Router.
+*   **Backend**: FastAPI (Python), SQLAlchemy (SQLite), Pydantic.
+
+## Installation
 
 ### Prerequisites
-- Node.js (v18+)
-- Python (v3.10+)
-- npm
+
+*   Node.js (v18+)
+*   Python (v3.10+)
 
 ### Backend Setup
-The backend is built with FastAPI and SQLite.
 
 1.  Navigate to the backend directory:
     ```bash
@@ -29,14 +46,13 @@ The backend is built with FastAPI and SQLite.
     ```bash
     python seed.py
     ```
-5.  Run the server:
+5.  Start the server:
     ```bash
     uvicorn app.main:app --reload
     ```
     The API will be available at `http://localhost:8000`.
 
 ### Frontend Setup
-The frontend is built with React, Vite, and TailwindCSS.
 
 1.  Navigate to the frontend directory:
     ```bash
@@ -46,144 +62,68 @@ The frontend is built with React, Vite, and TailwindCSS.
     ```bash
     npm install
     ```
-3.  Run the development server:
+3.  Start the development server:
     ```bash
     npm run dev
     ```
     The application will be available at `http://localhost:5173`.
 
-## Usage Guide
+## Usage
 
-### User (Configurator)
-1.  **Start**: Navigate to the home page.
-2.  **Chassis Selection**: Choose a chassis and power supply.
-3.  **Slot Configuration**:
-    *   Click on a slot in the visualizer or the list.
-    *   Select a compatible component from the available list.
-    *   Configure options (e.g., memory, storage) if available.
-    *   **Rules**: The system will prevent selecting incompatible components and display alerts if rules are violated.
-4.  **Review**: Check the system topology and total price.
+### User Flow
+1.  **Topology**: View the system layout.
+2.  **Components**: Select components for each slot. The system will prevent invalid selections based on defined rules.
+3.  **Chassis**: Choose a chassis and power supply.
+4.  **Quote**: Review the configuration and request a formal quote.
 
-### Admin Panel
-Access the admin panel at `/admin` (e.g., `http://localhost:5173/admin`).
-*   **Login**: Default credentials are `admin` / `admin`.
-*   **Products**:
-    *   View, Create, Edit, and Delete products.
-    *   Define product properties (power, dimensions, price).
-    *   Define configuration options using JSON (see below).
-*   **Rules**:
-    *   View, Create, Edit, and Delete configuration rules.
-    *   Define logic using JSON (see below).
-*   **Settings**: Manage global system settings.
+### Admin Flow
+1.  Navigate to `/admin`.
+2.  Login with the admin password (default: `admin`).
+3.  Use the tabs to manage Products, Settings, and Rules.
 
-## Technical Documentation
+## JSON Schemas
 
-### Product Configuration Options (JSON)
-When creating or editing a product, you can define configurable options (like RAM size or optional add-ons) using a JSON array.
+### Product Options
+Product options (e.g., RAM, Storage size) are defined as a JSON array in the Product editor:
 
-**Structure:**
-```json
-[
-  {
-    "id": "string",          // Unique ID for the option
-    "label": "string",       // Display label
-    "type": "select" | "boolean",
-    "default": "value",      // Default value
-    // For 'select' type:
-    "choices": [
-      {
-        "label": "string",
-        "value": "string",
-        "priceMod": number   // Price addition for this choice
-      }
-    ],
-    // For 'boolean' type:
-    "priceMod": number       // Price addition if true
-  }
-]
-```
-
-**Example:**
 ```json
 [
   {
     "id": "ram",
     "label": "Memory",
     "type": "select",
-    "default": "16gb",
     "choices": [
-      { "label": "16GB", "value": "16gb", "priceMod": 0 },
-      { "label": "32GB", "value": "32gb", "priceMod": 200 }
-    ]
-  },
-  {
-    "id": "coating",
-    "label": "Conformal Coating",
-    "type": "boolean",
-    "default": false,
-    "priceMod": 50
+      { "value": "16GB", "label": "16GB DDR4", "priceMod": 0 },
+      { "value": "32GB", "label": "32GB DDR4", "priceMod": 150 }
+    ],
+    "default": "16GB"
   }
 ]
 ```
 
-### Rules Engine (JSON)
-Rules enforce compatibility and constraints. They are defined as JSON objects with `conditions` and `actions`.
+### Rules
+Rules are defined in the Admin > Rules tab using a flexible JSON format:
 
-**Structure:**
 ```json
 {
   "conditions": [
-    // Condition Type 1: Component Selected
     {
-      "type": "component_selected",
-      "componentId": "string", // ID of the component to check for
-      "slotIndex": number      // (Optional) Specific slot ID to check
-    },
-    // Condition Type 2: System Property
-    {
-      "type": "system_property",
-      "property": "slotCount" | "chassisId",
-      "operator": "gt" | "lt" | "eq" | "contains",
-      "value": any
+      "type": "component_present",
+      "slot_id": 1,
+      "product_id": "G28"
     }
   ],
   "actions": [
     {
-      "type": "forbid",
-      "componentId": "string", // Component to forbid
-      "slotIndex": number,     // (Optional) Specific slot to forbid it in
-      "message": "string"      // Error message to display
+      "type": "forbid_component",
+      "slot_id": 2,
+      "product_id": "G239",
+      "message": "G239 cannot be placed in Slot 2 when G28 is in Slot 1."
     }
   ]
 }
 ```
 
-**Logic:**
-*   **Conditions**: All conditions in the list must be true (AND logic) for the rule to trigger.
-*   **Actions**: If triggered, the specified components are forbidden.
+## License
 
-**Examples:**
-
-1.  **G28 in Slot 1 forbids G239 in Slot 2:**
-    ```json
-    {
-      "conditions": [
-        { "type": "component_selected", "componentId": "G28", "slotIndex": 1 }
-      ],
-      "actions": [
-        { "type": "forbid", "componentId": "G239", "slotIndex": 2, "message": "G28 in Slot 1 forbids G239 in Slot 2" }
-      ]
-    }
-    ```
-
-2.  **Slot Count > 5 forbids specific chassis:**
-    ```json
-    {
-      "conditions": [
-        { "type": "system_property", "property": "slotCount", "operator": "gt", "value": 5 }
-      ],
-      "actions": [
-        { "type": "forbid", "componentId": "C_3U_40HP", "message": "Chassis too small for >5 slots" }
-      ]
-    }
-    ```
+Proprietary - duagon AG

@@ -1,5 +1,7 @@
 import { useState, useEffect } from 'react';
 import { api } from '../services/api';
+import { SubConfigModal } from '../components/SubConfigModal';
+import { useToast } from '../components/ui/Toast'; // Corrected path for useToast
 import { Plus, Trash2, Edit } from 'lucide-react';
 import { cn } from '../lib/utils';
 
@@ -11,7 +13,10 @@ export function AdminPage() {
     const [isEditing, setIsEditing] = useState(false);
     const [activeTab, setActiveTab] = useState<'products' | 'settings' | 'rules'>('products');
     const [settings, setSettings] = useState<Record<string, string>>({});
+    const [deleteConfirmation, setDeleteConfirmation] = useState<{ id: string, name: string } | null>(null); // For products
+    const { toast } = useToast();
 
+    // Settings management
     useEffect(() => {
         if (activeTab === 'settings') {
             fetchSettings();
@@ -20,23 +25,24 @@ export function AdminPage() {
 
     const fetchSettings = async () => {
         try {
-            const data = await api.settings.list();
+            const data = await api.admin.getSettings(); // Changed API call
             const settingsMap: Record<string, string> = {};
             data.forEach((s: any) => settingsMap[s.key] = s.value);
             setSettings(settingsMap);
         } catch (error) {
             console.error("Failed to fetch settings", error);
+            toast.error("Failed to load settings.");
         }
     };
 
     const handleSaveSetting = async (key: string, value: string) => {
         try {
-            await api.settings.update(key, value);
-            alert("Settings saved!");
-            fetchSettings();
+            await api.admin.updateSetting(key, value);
+            setSettings({ ...settings, [key]: value });
+            toast.success("Settings saved!");
         } catch (error) {
             console.error("Failed to save setting", error);
-            alert("Failed to save setting.");
+            toast.error("Failed to save setting.");
         }
     };
 
@@ -67,6 +73,7 @@ export function AdminPage() {
             setProducts(productsData);
         } catch (error) {
             console.error('Failed to load data:', error);
+            toast.error("Failed to load products.");
         } finally {
             setIsLoading(false);
         }
@@ -111,9 +118,10 @@ export function AdminPage() {
                 height_u: 0,
                 connectors: [],
             });
+            toast.success(isEditing ? "Product updated successfully." : "Product created successfully.");
         } catch (error) {
             console.error('Failed to save product:', error);
-            alert('Failed to save product. Check console for details. Ensure Options is valid JSON.');
+            toast.error('Failed to save product. Check console for details. Ensure Options is valid JSON.');
         }
     };
 
@@ -141,13 +149,14 @@ export function AdminPage() {
     };
 
     const handleDeleteProduct = async (id: string) => {
-        if (confirm('Are you sure you want to delete this product?')) {
-            try {
-                await api.products.delete(id);
-                loadData();
-            } catch (error) {
-                console.error('Failed to delete product:', error);
-            }
+        try {
+            await api.products.delete(id);
+            loadData();
+            setDeleteConfirmation(null);
+            toast.success("Product deleted successfully.");
+        } catch (error) {
+            console.error('Failed to delete product:', error);
+            toast.error("Failed to delete product.");
         }
     };
 
@@ -402,7 +411,7 @@ export function AdminPage() {
                                                         <Edit size={18} />
                                                     </button>
                                                     <button
-                                                        onClick={() => handleDeleteProduct(product.id)}
+                                                        onClick={() => setDeleteConfirmation({ id: product.id, name: product.name })}
                                                         className="p-1 text-red-600 hover:bg-red-50 rounded-lg transition-colors"
                                                         title="Delete Product"
                                                     >
@@ -449,6 +458,20 @@ export function AdminPage() {
                     <RulesManager />
                 )}
             </div>
+
+            {/* Delete Confirmation Modal for Products */}
+            <SubConfigModal
+                isOpen={!!deleteConfirmation}
+                onClose={() => setDeleteConfirmation(null)}
+                onSave={() => deleteConfirmation && handleDeleteProduct(deleteConfirmation.id)}
+                title="Confirm Deletion"
+            >
+                <div className="space-y-4">
+                    <p className="text-slate-600">
+                        Are you sure you want to delete <strong>{deleteConfirmation?.name}</strong>? This action cannot be undone.
+                    </p>
+                </div>
+            </SubConfigModal>
         </div>
     );
 }
@@ -467,6 +490,8 @@ function RulesManager() {
     });
 
     const [isEditing, setIsEditing] = useState(false);
+    const [deleteConfirmation, setDeleteConfirmation] = useState<{ id: number, description: string } | null>(null); // For rules
+    const { toast } = useToast();
 
     const loadRules = async () => {
         setIsLoading(true);
@@ -475,6 +500,7 @@ function RulesManager() {
             setRules(data);
         } catch (error) {
             console.error("Failed to load rules", error);
+            toast.error("Failed to load rules.");
         } finally {
             setIsLoading(false);
         }
@@ -497,8 +523,10 @@ function RulesManager() {
 
             if (isEditing) {
                 await api.rules.update(newRule.id, ruleData);
+                toast.success("Rule updated successfully.");
             } else {
                 await api.rules.create(ruleData);
+                toast.success("Rule created successfully.");
             }
 
             setIsCreating(false);
@@ -510,7 +538,8 @@ function RulesManager() {
                 definition: JSON.stringify({ conditions: [], actions: [] }, null, 2)
             });
         } catch (error) {
-            alert("Invalid JSON definition");
+            console.error("Failed to save rule", error);
+            toast.error("Invalid JSON definition or server error.");
         }
     };
 
@@ -528,8 +557,11 @@ function RulesManager() {
         try {
             await api.rules.delete(id);
             loadRules();
+            setDeleteConfirmation(null);
+            toast.success("Rule deleted successfully.");
         } catch (error) {
             console.error('Failed to delete rule:', error);
+            toast.error("Failed to delete rule.");
         }
     };
 
@@ -622,7 +654,7 @@ function RulesManager() {
                                             <Edit size={18} />
                                         </button>
                                         <button
-                                            onClick={() => handleDeleteRule(rule.id)}
+                                            onClick={() => setDeleteConfirmation({ id: rule.id, description: rule.description })}
                                             className="p-1 text-red-600 hover:bg-red-50 rounded-lg transition-colors"
                                             title="Delete Rule"
                                         >

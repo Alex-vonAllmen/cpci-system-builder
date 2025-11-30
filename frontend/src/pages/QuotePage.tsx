@@ -6,11 +6,14 @@ import { ArrowLeft, Send, FileText, CheckCircle, Download } from 'lucide-react';
 import { Link, useNavigate } from 'react-router-dom';
 import { cn } from '../lib/utils';
 
+import { useToast } from '../components/ui/Toast';
+
 export function QuotePage() {
     const { slots, chassisId, chassisOptions, psuId, psuOptions, products, fetchProducts, resetConfig } = useConfigStore();
     const [isSubmitting, setIsSubmitting] = useState(false);
     const [isSuccess, setIsSuccess] = useState(false);
     const navigate = useNavigate();
+    const toast = useToast();
 
     useEffect(() => {
         if (products.length === 0) fetchProducts();
@@ -338,7 +341,7 @@ export function QuotePage() {
             setIsSuccess(true);
         } catch (error) {
             console.error("Failed to submit quote:", error);
-            alert("Failed to submit quote. Please try again.");
+            toast.error("Failed to submit quote. Please try again.");
         } finally {
             setIsSubmitting(false);
         }

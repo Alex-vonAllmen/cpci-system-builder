@@ -69,7 +69,7 @@ export function ChassisPage() {
 
         const violations = validateRules(proposedState);
         if (violations.length > 0) {
-            alert(`Cannot select this component:\n\n${violations.join('\n')}`);
+            toast.error(`Cannot select this component:\n\n${violations.join('\n')}`);
             return;
         }
 

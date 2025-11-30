@@ -8,10 +8,13 @@ import { SubConfigModal } from '../components/SubConfigModal';
 import type { Product } from '../data/mockProducts';
 import { cn } from '../lib/utils';
 
+import { useToast } from '../components/ui/Toast';
+
 export function ComponentsPage() {
     const { slots, setSlotComponent, setSlotOptions, products, fetchProducts, validateRules } = useConfigStore();
     const [selectedSlotId, setSelectedSlotId] = useState<number | null>(1);
     const [categoryFilter, setCategoryFilter] = useState<string>('All');
+    const toast = useToast();
 
     useEffect(() => {
         fetchProducts();
@@ -70,7 +73,7 @@ export function ComponentsPage() {
                 slots: slots.map(s => s.id === currentSlot?.id ? { ...s, componentId: product.id } : s)
             };
             const violations = validateRules(proposedState);
-            alert(`Cannot select this component:\n- ${violations.join('\n- ')}`);
+            toast.error(`Cannot select this component:\n- ${violations.join('\n- ')}`);
             return;
         }
 
