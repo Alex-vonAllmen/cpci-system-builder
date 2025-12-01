@@ -81,6 +81,58 @@ export function BackplaneVisualizer() {
                         </g>
                     );
                 })}
+
+                {/* Installed Components Layer */}
+                {slots.map((slot, index) => {
+                    if (slot.blockedBy) return null; // Skip blocked slots, they are covered by the blocker
+                    if (!slot.componentId) return null;
+
+                    const x = PADDING + (index * (SLOT_WIDTH + GAP));
+                    const y = PADDING;
+
+                    // Calculate width based on slot.width (HP)
+                    // 4HP = 1 slot width
+                    // 8HP = 2 slot widths + 1 gap
+                    const slotsCovered = Math.ceil((slot.width || 4) / 4);
+                    const width = (slotsCovered * SLOT_WIDTH) + ((slotsCovered - 1) * GAP);
+
+                    return (
+                        <g key={`comp-${slot.id}`} transform={`translate(${x}, ${y})`}>
+                            <rect
+                                width={width}
+                                height={SLOT_HEIGHT}
+                                fill="rgba(255, 255, 255, 0.1)"
+                                stroke="white"
+                                strokeWidth={2}
+                                rx={4}
+                            />
+                            <text
+                                x={width / 2}
+                                y={SLOT_HEIGHT / 2}
+                                textAnchor="middle"
+                                dominantBaseline="middle"
+                                fill="white"
+                                fontSize="14"
+                                fontWeight="bold"
+                                style={{ textShadow: '0px 1px 2px rgba(0,0,0,0.8)' }}
+                                className="pointer-events-none select-none"
+                            >
+                                {slot.componentId}
+                            </text>
+                            {slotsCovered > 1 && (
+                                <text
+                                    x={width / 2}
+                                    y={SLOT_HEIGHT / 2 + 20}
+                                    textAnchor="middle"
+                                    fill="rgba(255,255,255,0.7)"
+                                    fontSize="10"
+                                >
+                                    ({slot.width}HP)
+                                </text>
+                            )}
+                        </g>
+                    );
+                })}
             </svg>
         </div>
     );

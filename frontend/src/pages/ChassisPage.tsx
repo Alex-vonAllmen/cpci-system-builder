@@ -4,12 +4,12 @@ import { cn } from '../lib/utils';
 
 import { ComponentCard } from '../components/ComponentCard';
 import { SubConfigModal } from '../components/SubConfigModal';
-import { ArrowLeft, ArrowRight, Zap, Box } from 'lucide-react';
+import { ArrowLeft, ArrowRight, Zap, Box, AlertCircle } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import type { Product } from '../data/mockProducts';
 
 export function ChassisPage() {
-    const { slots, chassisId, psuId, setChassis, setPsu, products, fetchProducts, validateRules } = useConfigStore();
+    const { slots, chassisId, psuId, setChassis, setPsu, products, fetchProducts, validateRules, chassisOptions: savedChassisOptions, psuOptions: savedPsuOptions } = useConfigStore();
 
     useEffect(() => {
         if (products.length === 0) fetchProducts();
@@ -20,10 +20,30 @@ export function ChassisPage() {
     const [tempOptions, setTempOptions] = useState<Record<string, any>>({});
 
     // Calculate total power consumption
+    // Calculate total power consumption (including options)
     const totalPower = slots.reduce((total, slot) => {
         if (!slot.componentId) return total;
         const product = products.find((p: any) => p.id === slot.componentId);
-        return total + (product?.powerWatts || 0);
+        if (!product) return total;
+
+        let itemPower = product.powerWatts || 0;
+
+        // Add power from options
+        if (product.options && slot.selectedOptions) {
+            Object.entries(slot.selectedOptions).forEach(([optId, optVal]) => {
+                const optDef = (product.options as any[]).find((o: any) => o.id === optId);
+                if (optDef) {
+                    if (optDef.type === 'select') {
+                        const choice = optDef.choices.find((c: any) => c.value === optVal);
+                        if (choice && choice.powerMod) itemPower += choice.powerMod;
+                    } else if (optDef.type === 'boolean' && optVal === true) {
+                        if (optDef.powerMod) itemPower += optDef.powerMod;
+                    }
+                }
+            });
+        }
+
+        return total + itemPower;
     }, 0);
 
     // Add 20% buffer
@@ -227,6 +247,26 @@ export function ChassisPage() {
                                 <span className="font-bold text-xl text-blue-600">{requiredPower}W</span>
                             </div>
                         </div>
+
+                        {/* PSU Validation Warning */}
+                        {psuId && (
+                            (() => {
+                                const psu = products.find(p => p.id === psuId);
+                                const psuCapacity = psu ? Math.abs(psu.powerWatts || 0) : 0;
+                                // Only check if PSU has capacity (internal PSUs)
+                                if (psuCapacity > 0 && requiredPower > psuCapacity) {
+                                    return (
+                                        <div className="mt-4 p-3 bg-red-50 border border-red-200 rounded-lg text-sm text-red-700 font-medium flex items-start gap-2">
+                                            <AlertCircle size={16} className="mt-0.5 shrink-0" />
+                                            <div>
+                                                Warning: Selected PSU ({psuCapacity}W) is insufficient for the required power ({requiredPower}W).
+                                            </div>
+                                        </div>
+                                    );
+                                }
+                                return null;
+                            })()
+                        )}
                     </div>
 
                     <div className="bg-blue-50 p-4 rounded-xl border border-blue-100 text-sm text-blue-800">
@@ -253,6 +293,7 @@ export function ChassisPage() {
                                             product={chassis}
                                             isSelected={chassisId === chassis.id}
                                             onSelect={() => !forbidden && handleSelectProduct(chassis, 'chassis')}
+                                            selectedOptions={chassisId === chassis.id ? savedChassisOptions : undefined}
                                         />
                                         {forbidden && (
                                             <div className="absolute inset-0 flex items-center justify-center bg-slate-100/50 cursor-not-allowed" title="Forbidden by configuration rules">
@@ -280,6 +321,7 @@ export function ChassisPage() {
                                             product={psu}
                                             isSelected={psuId === psu.id}
                                             onSelect={() => !forbidden && handleSelectProduct(psu, 'psu')}
+                                            selectedOptions={psuId === psu.id ? savedPsuOptions : undefined}
                                         />
                                         {forbidden && (
                                             <div className="absolute inset-0 flex items-center justify-center bg-slate-100/50 cursor-not-allowed" title="Forbidden by configuration rules">

@@ -198,7 +198,36 @@ export function QuotePage() {
     const seriesGrandTotal = seriesTotal * seriesQtyNum;
     const totalCost = prototypeGrandTotal + seriesGrandTotal;
 
-    const totalPower = selectedItems.reduce((sum, item) => sum + (item.product.powerWatts || 0), 0);
+
+
+    // Calculate Power
+    const powerConsumption = selectedItems.reduce((sum, item) => {
+        let watts = item.product.powerWatts || 0;
+
+        // Add power from options
+        if (item.product.options && item.options) {
+            Object.entries(item.options).forEach(([optId, optVal]) => {
+                const optDef = (item.product.options as any[]).find((o: any) => o.id === optId);
+                if (optDef) {
+                    if (optDef.type === 'select') {
+                        const choice = optDef.choices.find((c: any) => c.value === optVal);
+                        if (choice && choice.powerMod) watts += choice.powerMod;
+                    } else if (optDef.type === 'boolean' && optVal === true) {
+                        if (optDef.powerMod) watts += optDef.powerMod;
+                    }
+                }
+            });
+        }
+
+        return watts > 0 ? sum + watts : sum;
+    }, 0);
+
+    const powerCapacity = selectedItems.reduce((sum, item) => {
+        const watts = item.product.powerWatts || 0;
+        return watts < 0 ? sum + Math.abs(watts) : sum;
+    }, 0);
+
+    const isPowerOverload = powerCapacity > 0 && powerConsumption > powerCapacity;
 
     const generatePDF = async (returnBlob = false) => {
         // Dynamic import to avoid SSR issues if any (though this is SPA)
@@ -517,8 +546,15 @@ export function QuotePage() {
                     <div className="p-6 bg-slate-50 border-t border-slate-200 space-y-2">
                         <div className="flex justify-between text-sm text-slate-600">
                             <span>Total Power Consumption</span>
-                            <span>{totalPower}W</span>
+                            <span className={cn(isPowerOverload ? "text-red-600 font-bold" : "")}>
+                                {powerConsumption}W / {powerCapacity > 0 ? `${powerCapacity}W` : 'External'}
+                            </span>
                         </div>
+                        {isPowerOverload && (
+                            <div className="text-xs text-red-600 bg-red-50 p-2 rounded border border-red-100">
+                                Warning: Power consumption exceeds PSU capacity!
+                            </div>
+                        )}
                         <div className="flex justify-between text-sm text-slate-600">
                             <span>System EOL</span>
                             <span className="font-medium text-amber-600">

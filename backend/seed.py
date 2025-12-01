@@ -62,6 +62,32 @@ products = [
         "price_500": 1550,
     },
     {
+        "id": "G029M",
+        "type": "cpu",
+        "name": "G029M Intel Xeon D",
+        "description": "Intel Xeon D-1500, 4HP (expandable)",
+        "power_watts": 45,
+        "width_hp": 4,
+        "price_1": 2800,
+        "price_25": 2700,
+        "price_50": 2600,
+        "price_100": 2500,
+        "price_250": 2400,
+        "price_500": 2300,
+        "options": [
+            {
+                "id": "interface",
+                "label": "Interface Option",
+                "type": "select",
+                "choices": [
+                    { "label": "Standard (GbE)", "value": "std", "priceMod": 0, "widthMod": 0, "powerMod": 0 },
+                    { "label": "High Performance (10GbE)", "value": "10gbe", "priceMod": 500, "widthMod": 4, "powerMod": 15 }
+                ],
+                "default": "std"
+            }
+        ]
+    },
+    {
         "id": "G51",
         "type": "storage",
         "name": "G51 NVMe Carrier",
@@ -107,9 +133,9 @@ products = [
                 "label": "M.2 Slot 1 (Modem)",
                 "type": "select",
                 "choices": [
-                    { "label": "Empty", "value": "none", "priceMod": 0 },
-                    { "label": "5G Modem (Sub-6GHz)", "value": "modem_5g_sub6", "priceMod": { "1": 250, "25": 240, "50": 230, "100": 220, "250": 210, "500": 200 } },
-                    { "label": "4G/LTE Modem", "value": "modem_4g", "priceMod": { "1": 150, "25": 145, "50": 140, "100": 135, "250": 130, "500": 125 } },
+                    { "label": "Empty", "value": "none", "priceMod": 0, "powerMod": 0 },
+                    { "label": "5G Modem (Sub-6GHz)", "value": "modem_5g_sub6", "priceMod": { "1": 250, "25": 240, "50": 230, "100": 220, "250": 210, "500": 200 }, "powerMod": 10 },
+                    { "label": "4G/LTE Modem", "value": "modem_4g", "priceMod": { "1": 150, "25": 145, "50": 140, "100": 135, "250": 130, "500": 125 }, "powerMod": 5 },
                 ],
                 "default": "none"
             },
@@ -118,9 +144,9 @@ products = [
                 "label": "M.2 Slot 2 (Modem)",
                 "type": "select",
                 "choices": [
-                    { "label": "Empty", "value": "none", "priceMod": 0 },
-                    { "label": "5G Modem (Sub-6GHz)", "value": "modem_5g_sub6", "priceMod": { "1": 250, "25": 240, "50": 230, "100": 220, "250": 210, "500": 200 } },
-                    { "label": "4G/LTE Modem", "value": "modem_4g", "priceMod": { "1": 150, "25": 145, "50": 140, "100": 135, "250": 130, "500": 125 } },
+                    { "label": "Empty", "value": "none", "priceMod": 0, "powerMod": 0 },
+                    { "label": "5G Modem (Sub-6GHz)", "value": "modem_5g_sub6", "priceMod": { "1": 250, "25": 240, "50": 230, "100": 220, "250": 210, "500": 200 }, "powerMod": 10 },
+                    { "label": "4G/LTE Modem", "value": "modem_4g", "priceMod": { "1": 150, "25": 145, "50": 140, "100": 135, "250": 130, "500": 125 }, "powerMod": 5 },
                 ],
                 "default": "none"
             }
@@ -286,7 +312,7 @@ products = [
         "type": "psu",
         "name": "300W Pluggable PSU",
         "description": "3U, 8HP, 300W Output",
-        "power_watts": 0,
+        "power_watts": -300,
         "width_hp": 8,
         "height_u": 3,
         "price_1": 350,
@@ -302,7 +328,7 @@ products = [
         "type": "psu",
         "name": "600W Open Frame PSU",
         "description": "Internal mounting (Rear), 600W Output",
-        "power_watts": 0,
+        "power_watts": -600,
         "width_hp": 0,
         "height_u": 4,
         "price_1": 250,

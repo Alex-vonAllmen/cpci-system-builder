@@ -8,6 +8,8 @@ export interface Slot {
     type: 'system' | 'peripheral';
     componentId: string | null;
     selectedOptions?: Record<string, any>;
+    width: number; // Effective width in HP
+    blockedBy: number | null; // ID of the slot that blocks this one
 }
 
 interface ConfigState {
@@ -43,6 +45,8 @@ export const useConfigStore = create<ConfigState>((set) => ({
         id: i + 1,
         type: i === 0 ? 'system' : 'peripheral',
         componentId: null,
+        width: 4,
+        blockedBy: null,
     })),
 
     setSlotCount: (count) => set((state) => {
@@ -61,7 +65,9 @@ export const useConfigStore = create<ConfigState>((set) => ({
             return {
                 id: i + 1,
                 type,
-                componentId: existingSlot ? existingSlot.componentId : null
+                componentId: existingSlot ? existingSlot.componentId : null,
+                width: 4,
+                blockedBy: null
             };
         });
 
@@ -77,22 +83,141 @@ export const useConfigStore = create<ConfigState>((set) => ({
             // If type changes, clear the component to avoid invalid configurations
             const componentId = slot.type !== type ? null : slot.componentId;
 
-            return { ...slot, type, componentId, selectedOptions: slot.type !== type ? {} : slot.selectedOptions };
+            return { ...slot, type, componentId, selectedOptions: slot.type !== type ? {} : slot.selectedOptions, blockedBy: null, width: 4 };
         });
         return { systemSlotPosition: position, slots: newSlots };
     }),
 
-    setSlotComponent: (slotId, componentId) => set((state) => ({
-        slots: state.slots.map((slot) =>
-            slot.id === slotId ? { ...slot, componentId, selectedOptions: {} } : slot
-        ),
-    })),
+    setSlotComponent: (slotId, componentId) => set((state) => {
+        // 1. Find component and calculate width
+        const product = state.products.find(p => p.id === componentId);
+        let width = product ? (product.width_hp || 4) : 4;
 
-    setSlotOptions: (slotId, options) => set((state) => ({
-        slots: state.slots.map((slot) =>
-            slot.id === slotId ? { ...slot, selectedOptions: options } : slot
-        ),
-    })),
+        // If unselecting (componentId is null), reset width to 4 and clear blocking
+        if (!componentId) {
+            // Clear this slot
+            const newSlots = state.slots.map(s => {
+                if (s.id === slotId) return { ...s, componentId: null, selectedOptions: {}, width: 4, blockedBy: null };
+                if (s.blockedBy === slotId) return { ...s, blockedBy: null }; // Unblock neighbors
+                return s;
+            });
+            return { slots: newSlots };
+        }
+
+        // 2. Check if we have enough space
+        // Calculate required slots (assuming 4HP per slot)
+        const slotsNeeded = Math.ceil(width / 4);
+
+        // Check if subsequent slots are available (or already blocked by THIS slot, which is fine if we are just updating)
+        // But here we are setting a NEW component.
+
+        // We need to check slots from slotId to slotId + slotsNeeded - 1
+        // They must be either empty, or occupied by THIS slot (if we are replacing?), or blocked by THIS slot.
+        // Actually, simpler: Check if they are free or blocked by *other* slots.
+
+        // However, `setSlotComponent` implies we are putting a component here.
+        // We should clear any existing blocking from this slot first.
+
+        let valid = true;
+        for (let i = 0; i < slotsNeeded; i++) {
+            const targetId = slotId + i;
+            const targetSlot = state.slots.find(s => s.id === targetId);
+            if (!targetSlot) { valid = false; break; } // Out of bounds
+
+            // If it's the first slot (the one we are setting), it's fine (we are overwriting it)
+            if (i === 0) continue;
+
+            // For other slots, they must be empty or blocked by US (if we are re-selecting).
+            // But since we are setting a component, let's assume we want them to be effectively "available".
+            if (targetSlot.componentId && targetSlot.blockedBy !== slotId) { valid = false; break; }
+            if (targetSlot.blockedBy && targetSlot.blockedBy !== slotId) { valid = false; break; }
+        }
+
+        if (!valid) {
+            // TODO: Notify user? For now just don't set it or maybe set it but it will look broken?
+            // Better to return state as is if invalid?
+            // The UI should prevent this, but store should be safe.
+            console.warn("Not enough space for component");
+            return state;
+        }
+
+        const newSlots = state.slots.map(s => {
+            // The main slot
+            if (s.id === slotId) {
+                return { ...s, componentId, selectedOptions: {}, width, blockedBy: null };
+            }
+            // The blocked slots
+            if (s.id > slotId && s.id < slotId + slotsNeeded) {
+                return { ...s, componentId: null, selectedOptions: {}, width: 4, blockedBy: slotId };
+            }
+            // If this slot WAS blocked by slotId but is no longer needed (e.g. component shrunk), unblock it
+            if (s.blockedBy === slotId && s.id >= slotId + slotsNeeded) {
+                return { ...s, blockedBy: null };
+            }
+            return s;
+        });
+
+        return { slots: newSlots };
+    }),
+
+    setSlotOptions: (slotId, options) => set((state) => {
+        const slot = state.slots.find(s => s.id === slotId);
+        if (!slot || !slot.componentId) return state;
+
+        const product = state.products.find(p => p.id === slot.componentId);
+        if (!product) return state;
+
+        // Calculate new width based on options
+        let width = product.width_hp || 4;
+        if (product.options) {
+            product.options.forEach((opt: any) => {
+                const selectedValue = options[opt.id];
+                if (selectedValue) {
+                    const choice = opt.choices?.find((c: any) => c.value === selectedValue);
+                    if (choice && choice.widthMod) {
+                        width += choice.widthMod;
+                    }
+                }
+            });
+        }
+
+        const slotsNeeded = Math.ceil(width / 4);
+
+        // Check validity (similar to setSlotComponent)
+        let valid = true;
+        for (let i = 1; i < slotsNeeded; i++) {
+            const targetId = slotId + i;
+            const targetSlot = state.slots.find(s => s.id === targetId);
+            if (!targetSlot) { valid = false; break; }
+            if (targetSlot.componentId && targetSlot.blockedBy !== slotId) { valid = false; break; }
+            if (targetSlot.blockedBy && targetSlot.blockedBy !== slotId) { valid = false; break; }
+        }
+
+        if (!valid) {
+            console.warn("Options increase width too much");
+            // Maybe we should still allow setting options but show error? 
+            // For now, let's allow it but it might overlap? No, better to block.
+            // Or better: The UI should have checked this.
+            return state;
+        }
+
+        const newSlots = state.slots.map(s => {
+            if (s.id === slotId) {
+                return { ...s, selectedOptions: options, width };
+            }
+            // The blocked slots
+            if (s.id > slotId && s.id < slotId + slotsNeeded) {
+                return { ...s, componentId: null, selectedOptions: {}, width: 4, blockedBy: slotId };
+            }
+            // Unblock if shrunk
+            if (s.blockedBy === slotId && s.id >= slotId + slotsNeeded) {
+                return { ...s, blockedBy: null };
+            }
+            return s;
+        });
+
+        return { slots: newSlots };
+    }),
 
     setChassis: (chassisId, options = {}) => set({ chassisId, chassisOptions: options }),
     setPsu: (psuId, options = {}) => set({ psuId, psuOptions: options }),
@@ -125,6 +250,8 @@ export const useConfigStore = create<ConfigState>((set) => ({
             id: i + 1,
             type: i === 0 ? 'system' : 'peripheral',
             componentId: null,
+            width: 4,
+            blockedBy: null,
         })),
     })),
 

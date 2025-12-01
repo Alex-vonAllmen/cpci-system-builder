@@ -11,7 +11,7 @@ import { cn } from '../lib/utils';
 import { useToast } from '../components/ui/Toast';
 
 export function ComponentsPage() {
-    const { slots, setSlotComponent, setSlotOptions, products, fetchProducts, validateRules } = useConfigStore();
+    const { slots, setSlotComponent, setSlotOptions, products, fetchProducts, validateRules, chassisId, psuId, chassisOptions } = useConfigStore();
     const [selectedSlotId, setSelectedSlotId] = useState<number | null>(1);
     const [categoryFilter, setCategoryFilter] = useState<string>('All');
     const toast = useToast();
@@ -26,6 +26,22 @@ export function ComponentsPage() {
 
     const currentSlot = slots.find(s => s.id === selectedSlotId);
     const isSystemSlot = currentSlot?.type === 'system';
+    const isBlocked = !!currentSlot?.blockedBy;
+
+    // Calculate available slots based on Chassis and PSU
+    const chassis = products.find(p => p.id === chassisId);
+    const psu = products.find(p => p.id === psuId);
+
+    // Default to 9 slots if not set
+    // If PSU takes space (width_hp > 0), reduce slots.
+    // Assuming standard 84HP rack = 21 slots (but we usually have 9-slot backplanes).
+    // Let's stick to the "Slot Count" logic.
+    // If PSU is pluggable (width > 0), it consumes slots from the RIGHT?
+    // Let's assume it consumes slots from the end.
+
+    const psuSlots = psu && psu.width_hp > 0 ? Math.ceil(psu.width_hp / 4) : 0;
+    const totalSlots = slots.length;
+    const availableSlotCount = totalSlots - psuSlots;
 
     // Filter products based on slot type and category
     const availableProducts = products.filter((p: Product) => {
@@ -209,22 +225,34 @@ export function ComponentsPage() {
                         <div className="space-y-2">
                             <h3 className="text-sm font-medium text-slate-700">Select a slot to configure:</h3>
                             <div className="grid grid-cols-5 gap-2">
-                                {slots.map(slot => (
-                                    <button
-                                        key={slot.id}
-                                        onClick={() => setSelectedSlotId(slot.id)}
-                                        className={cn(
-                                            "h-10 rounded-lg text-sm font-bold transition-all border-2",
-                                            selectedSlotId === slot.id
-                                                ? "border-blue-600 bg-blue-50 text-blue-700"
-                                                : slot.componentId
-                                                    ? "border-green-200 bg-green-50 text-green-700"
-                                                    : "border-slate-200 hover:border-slate-300 text-slate-600"
-                                        )}
-                                    >
-                                        {slot.id}
-                                    </button>
-                                ))}
+                                {slots.map(slot => {
+                                    const isSlotBlocked = !!slot.blockedBy;
+                                    const isSlotDisabled = slot.id > availableSlotCount;
+
+                                    return (
+                                        <button
+                                            key={slot.id}
+                                            onClick={() => !isSlotDisabled && !isSlotBlocked && setSelectedSlotId(slot.id)}
+                                            disabled={isSlotDisabled || isSlotBlocked}
+                                            className={cn(
+                                                "h-10 rounded-lg text-sm font-bold transition-all border-2 relative",
+                                                selectedSlotId === slot.id
+                                                    ? "border-blue-600 bg-blue-50 text-blue-700"
+                                                    : slot.componentId
+                                                        ? "border-green-200 bg-green-50 text-green-700"
+                                                        : isSlotBlocked
+                                                            ? "border-slate-200 bg-slate-100 text-slate-400 cursor-not-allowed"
+                                                            : isSlotDisabled
+                                                                ? "border-slate-100 bg-slate-100 text-slate-300 cursor-not-allowed"
+                                                                : "border-slate-200 hover:border-slate-300 text-slate-600"
+                                            )}
+                                        >
+                                            {slot.id}
+                                            {isSlotBlocked && <span className="absolute inset-0 flex items-center justify-center text-xs opacity-50">Link</span>}
+                                            {isSlotDisabled && <span className="absolute inset-0 flex items-center justify-center text-xs">PSU</span>}
+                                        </button>
+                                    );
+                                })}
                             </div>
                         </div>
                     </div>
@@ -241,9 +269,14 @@ export function ComponentsPage() {
                             </span>
                         </div>
                         <p className="text-sm text-slate-500">
-                            {isSystemSlot
-                                ? "Select a CPU board for the system controller."
-                                : "Select a peripheral card (Storage, Network, I/O)."}
+                            {isBlocked
+                                ? `This slot is blocked by the component in slot ${currentSlot?.blockedBy}.`
+                                : selectedSlotId && selectedSlotId > availableSlotCount
+                                    ? "This slot is occupied by the PSU."
+                                    : isSystemSlot
+                                        ? "Select a CPU board for the system controller."
+                                        : "Select a peripheral card (Storage, Network, I/O)."
+                            }
                         </p>
                     </div>
                 </div>
@@ -283,19 +316,29 @@ export function ComponentsPage() {
                                     isSelected={currentSlot?.componentId === product.id}
                                     onSelect={() => handleSelectProduct(product)}
                                     forbidden={isForbidden(product)}
+                                    selectedOptions={currentSlot?.componentId === product.id ? currentSlot.selectedOptions : undefined}
                                 />
                             ))}
                         </div>
 
-                        {availableProducts.length === 0 && (
-                            <div className="flex flex-col items-center justify-center h-64 text-slate-400">
-                                <AlertCircle size={48} className="mb-4 opacity-50" />
-                                <p>No compatible components found for this slot.</p>
-                            </div>
-                        )}
                     </div>
+
+                    {(isBlocked || (selectedSlotId && selectedSlotId > availableSlotCount)) && (
+                        <div className="flex flex-col items-center justify-center h-64 text-slate-400">
+                            <AlertCircle size={48} className="mb-4 opacity-50" />
+                            <p>{isBlocked ? "Slot Blocked" : "Slot Occupied by PSU"}</p>
+                        </div>
+                    )}
+
+                    {availableProducts.length === 0 && !isBlocked && !(selectedSlotId && selectedSlotId > availableSlotCount) && (
+                        <div className="flex flex-col items-center justify-center h-64 text-slate-400">
+                            <AlertCircle size={48} className="mb-4 opacity-50" />
+                            <p>No compatible components found for this slot.</p>
+                        </div>
+                    )}
                 </div>
             </div>
         </div>
+
     );
 }

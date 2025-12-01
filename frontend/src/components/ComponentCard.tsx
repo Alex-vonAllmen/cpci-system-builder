@@ -8,9 +8,31 @@ interface ComponentCardProps {
     onSelect: () => void;
     disabled?: boolean;
     forbidden?: boolean;
+    selectedOptions?: Record<string, any>;
 }
 
-export function ComponentCard({ product, isSelected, onSelect, disabled, forbidden }: ComponentCardProps) {
+export function ComponentCard({ product, isSelected, onSelect, disabled, forbidden, selectedOptions }: ComponentCardProps) {
+    // Calculate total power and width including options
+    let totalPower = product.powerWatts || 0;
+    let totalWidth = product.widthHp || 0;
+
+    if (product.options && selectedOptions) {
+        Object.entries(selectedOptions).forEach(([optId, optVal]) => {
+            const optDef = (product.options as any[]).find((o: any) => o.id === optId);
+            if (optDef) {
+                if (optDef.type === 'select') {
+                    const choice = optDef.choices.find((c: any) => c.value === optVal);
+                    if (choice) {
+                        if (choice.powerMod) totalPower += choice.powerMod;
+                        if (choice.widthMod) totalWidth += choice.widthMod;
+                    }
+                } else if (optDef.type === 'boolean' && optVal === true) {
+                    if (optDef.powerMod) totalPower += optDef.powerMod;
+                    // Boolean widthMod not supported yet but could be
+                }
+            }
+        });
+    }
     return (
         <div
             className={cn(
@@ -38,9 +60,13 @@ export function ComponentCard({ product, isSelected, onSelect, disabled, forbidd
 
             <div className="mt-auto border-t border-slate-100 pt-3 space-y-2">
                 <div className="flex items-center justify-between text-xs text-slate-500">
-                    <span>{product.widthHp}HP</span>
+                    <span className={cn(totalWidth !== product.widthHp && "font-bold text-blue-600")}>
+                        {totalWidth}HP
+                    </span>
                     {product.heightU && <span>{product.heightU}U</span>}
-                    <span>{product.powerWatts}W</span>
+                    <span className={cn(totalPower !== product.powerWatts && "font-bold text-blue-600")}>
+                        {totalPower}W
+                    </span>
                     {product.eol_date && (
                         <span className="text-amber-600 font-medium">EOL: {product.eol_date.split('-')[0]}</span>
                     )}
