@@ -9,7 +9,7 @@ export interface ProductOption {
 
 export interface Product {
     id: string;
-    type: 'cpu' | 'storage' | 'network' | 'io' | 'carrier' | 'chassis' | 'psu' | 'accessory' | 'backplane';
+    type: 'cpu' | 'storage' | 'network' | 'io' | 'carrier' | 'chassis' | 'psu' | 'accessory' | 'backplane' | 'miscellaneous';
     name: string;
     description: string;
     powerWatts: number;

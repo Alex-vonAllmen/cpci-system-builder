@@ -341,7 +341,7 @@ products = [
     },
     {
         "id": "FILLER_4HP",
-        "type": "accessory",
+        "type": "miscellaneous",
         "name": "Empty Front Bezel 4HP",
         "description": "Filler panel for empty slots",
         "power_watts": 0,

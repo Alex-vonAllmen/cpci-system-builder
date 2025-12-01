@@ -56,7 +56,7 @@ export function ComponentsPage() {
             if (categoryFilter === 'Storage' && p.type !== 'storage') return false;
             if (categoryFilter === 'Network' && p.type !== 'network') return false;
             if (categoryFilter === 'I/O' && p.type !== 'io') return false;
-            if (categoryFilter === 'Miscellaneous' && p.type !== 'accessory') return false;
+            if (categoryFilter === 'Miscellaneous' && p.type !== 'miscellaneous') return false;
         }
 
         return true;
