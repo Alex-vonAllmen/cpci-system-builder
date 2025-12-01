@@ -29,7 +29,7 @@ export function TopologyPage() {
                             <input
                                 type="range"
                                 min="2"
-                                max="9"
+                                max="21"
                                 step="1"
                                 value={slotCount}
                                 onChange={(e) => setSlotCount(parseInt(e.target.value))}
@@ -37,7 +37,7 @@ export function TopologyPage() {
                             />
                             <div className="flex justify-between text-xs text-slate-400">
                                 <span>2</span>
-                                <span>9</span>
+                                <span>21</span>
                             </div>
                         </div>
 

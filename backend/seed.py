@@ -396,6 +396,43 @@ def seed():
         print("Setting default central email")
         db.add(models.SystemSetting(key="central_email", value="alexander.vonallmen@duagon.com"))
 
+    # Seed Rules
+    rules = [
+        {
+            "description": "Forbid 40HP Chassis if > 5 slots",
+            "definition": {
+                "conditions": [
+                    { "type": "system_property", "property": "slotCount", "operator": "gt", "value": 5 }
+                ],
+                "actions": [
+                    { "type": "forbid", "componentId": "C_4U_40HP", "message": "4U Compact Chassis (40HP) supports max 5 slots." },
+                    { "type": "forbid", "componentId": "C_3U_40HP", "message": "3U Compact Chassis (40HP) supports max 5 slots." }
+                ]
+            }
+        },
+        {
+            "description": "Forbid 84HP Chassis if > 21 slots",
+            "definition": {
+                "conditions": [
+                    { "type": "system_property", "property": "slotCount", "operator": "gt", "value": 21 }
+                ],
+                "actions": [
+                    { "type": "forbid", "componentId": "C_4U_84HP", "message": "4U Rack Mount Chassis (84HP) supports max 21 slots." },
+                    { "type": "forbid", "componentId": "C_3U_84HP", "message": "3U Rack Mount Chassis (84HP) supports max 21 slots." }
+                ]
+            }
+        }
+    ]
+
+    for r_data in rules:
+        existing_rule = db.query(models.Rule).filter(models.Rule.description == r_data["description"]).first()
+        if not existing_rule:
+            print(f"Creating rule: {r_data['description']}")
+            db.add(models.Rule(**r_data))
+        else:
+            print(f"Updating rule: {r_data['description']}")
+            existing_rule.definition = r_data["definition"]
+
     db.commit()
     print("Seeding complete.")
 

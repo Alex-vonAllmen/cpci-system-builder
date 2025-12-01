@@ -56,6 +56,7 @@ export function ComponentsPage() {
             if (categoryFilter === 'Storage' && p.type !== 'storage') return false;
             if (categoryFilter === 'Network' && p.type !== 'network') return false;
             if (categoryFilter === 'I/O' && p.type !== 'io') return false;
+            if (categoryFilter === 'Miscellaneous' && p.type !== 'accessory') return false;
         }
 
         return true;
@@ -290,7 +291,7 @@ export function ComponentsPage() {
                             {/* Filter Tabs (Simplified) */}
                             {!isSystemSlot && (
                                 <div className="flex gap-2">
-                                    {['All', 'Storage', 'Network', 'I/O'].map(filter => (
+                                    {['All', 'Storage', 'Network', 'I/O', 'Miscellaneous'].map(filter => (
                                         <button
                                             key={filter}
                                             onClick={() => setCategoryFilter(filter)}

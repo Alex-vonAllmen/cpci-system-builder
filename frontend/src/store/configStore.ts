@@ -35,13 +35,13 @@ interface ConfigState {
 }
 
 export const useConfigStore = create<ConfigState>((set) => ({
-    slotCount: 9, // Default to 9 slots
+    slotCount: 21, // Default to 21 slots (84HP)
     systemSlotPosition: 'left', // Default to left
     chassisId: null,
     chassisOptions: {},
     psuId: null,
     psuOptions: {},
-    slots: Array.from({ length: 9 }, (_, i) => ({
+    slots: Array.from({ length: 21 }, (_, i) => ({
         id: i + 1,
         type: i === 0 ? 'system' : 'peripheral',
         componentId: null,
@@ -240,13 +240,13 @@ export const useConfigStore = create<ConfigState>((set) => ({
     },
 
     resetConfig: () => set((state) => ({
-        slotCount: 9,
+        slotCount: 21,
         systemSlotPosition: 'left',
         chassisId: null,
         chassisOptions: {},
         psuId: null,
         psuOptions: {},
-        slots: Array.from({ length: 9 }, (_, i) => ({
+        slots: Array.from({ length: 21 }, (_, i) => ({
             id: i + 1,
             type: i === 0 ? 'system' : 'peripheral',
             componentId: null,
@@ -258,8 +258,28 @@ export const useConfigStore = create<ConfigState>((set) => ({
     rules: [],
 
     validateRules: (proposedState) => {
-        const { rules, slots, chassisId, psuId, slotCount } = proposedState;
+        const { rules, slots, chassisId, psuId, slotCount, products } = proposedState;
         const violations: string[] = [];
+
+        // 1. Check Total Width vs Chassis Width
+        if (chassisId) {
+            const chassis = products.find((p: any) => p.id === chassisId);
+            if (chassis && chassis.width_hp) {
+                const backplaneWidth = slotCount * 4; // Assuming 4HP per slot
+
+                let psuWidth = 0;
+                if (psuId) {
+                    const psu = products.find((p: any) => p.id === psuId);
+                    if (psu) psuWidth = psu.width_hp || 0;
+                }
+
+                const totalRequiredWidth = backplaneWidth + psuWidth;
+
+                if (totalRequiredWidth > chassis.width_hp) {
+                    violations.push(`Configuration requires ${totalRequiredWidth}HP (Slots: ${backplaneWidth}HP + PSU: ${psuWidth}HP), but selected chassis (${chassis.name}) only supports ${chassis.width_hp}HP.`);
+                }
+            }
+        }
 
         rules.forEach((rule: any) => {
             const def = rule.definition;
