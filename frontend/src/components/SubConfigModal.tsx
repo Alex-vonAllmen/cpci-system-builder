@@ -1,4 +1,5 @@
 import { X } from 'lucide-react';
+import { cn } from '../lib/utils';
 
 interface SubConfigModalProps {
     isOpen: boolean;
@@ -6,9 +7,11 @@ interface SubConfigModalProps {
     onSave: (options: any) => void;
     title: string;
     children: React.ReactNode;
+    saveLabel?: string;
+    saveButtonClass?: string;
 }
 
-export function SubConfigModal({ isOpen, onClose, onSave, title, children }: SubConfigModalProps) {
+export function SubConfigModal({ isOpen, onClose, onSave, title, children, saveLabel, saveButtonClass }: SubConfigModalProps) {
     if (!isOpen) return null;
 
     return (
@@ -34,9 +37,12 @@ export function SubConfigModal({ isOpen, onClose, onSave, title, children }: Sub
                     </button>
                     <button
                         onClick={() => onSave({})} // Placeholder for actual form data
-                        className="px-4 py-2 text-sm font-medium text-white bg-blue-600 rounded-lg hover:bg-blue-700"
+                        className={cn(
+                            "px-4 py-2 text-sm font-medium text-white rounded-lg transition-colors",
+                            saveButtonClass || "bg-blue-600 hover:bg-blue-700"
+                        )}
                     >
-                        Save Configuration
+                        {saveLabel || "Save Configuration"}
                     </button>
                 </div>
             </div>

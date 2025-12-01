@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { api } from '../services/api';
 import { SubConfigModal } from '../components/SubConfigModal';
 import { useToast } from '../components/ui/Toast'; // Corrected path for useToast
@@ -15,7 +15,16 @@ export function AdminPage() {
     const [settings, setSettings] = useState<Record<string, string>>({});
     const [deleteConfirmation, setDeleteConfirmation] = useState<{ id: string, name: string } | null>(null); // For products
     const [importResult, setImportResult] = useState<{ added: number, updated: number } | null>(null);
+
     const toast = useToast();
+    const formRef = useRef<HTMLDivElement>(null);
+
+    // Auto-scroll to form when creating/editing
+    useEffect(() => {
+        if (isCreating && formRef.current) {
+            formRef.current.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        }
+    }, [isCreating]);
 
     // Settings management
     useEffect(() => {
@@ -26,7 +35,7 @@ export function AdminPage() {
 
     const fetchSettings = async () => {
         try {
-            const data = await api.admin.getSettings(); // Changed API call
+            const data = await api.settings.list(); // Corrected API call
             const settingsMap: Record<string, string> = {};
             data.forEach((s: any) => settingsMap[s.key] = s.value);
             setSettings(settingsMap);
@@ -38,7 +47,7 @@ export function AdminPage() {
 
     const handleSaveSetting = async (key: string, value: string) => {
         try {
-            await api.admin.updateSetting(key, value);
+            await api.settings.update(key, value);
             setSettings({ ...settings, [key]: value });
             toast.success("Settings saved!");
         } catch (error) {
@@ -276,7 +285,7 @@ export function AdminPage() {
                         </div>
 
                         {isCreating && (
-                            <div className="bg-white p-6 rounded-xl shadow-sm border border-slate-200 animate-in fade-in slide-in-from-top-4">
+                            <div ref={formRef} className="bg-white p-6 rounded-xl shadow-sm border border-slate-200 animate-in fade-in slide-in-from-top-4">
                                 <h3 className="text-lg font-bold mb-4">{isEditing ? 'Edit Product' : 'New Product'}</h3>
                                 <form onSubmit={handleSaveProduct} className="grid grid-cols-2 gap-6">
                                     <div className="space-y-2">
@@ -537,7 +546,10 @@ export function AdminPage() {
                 isOpen={!!deleteConfirmation}
                 onClose={() => setDeleteConfirmation(null)}
                 onSave={() => deleteConfirmation && handleDeleteProduct(deleteConfirmation.id)}
+
                 title="Confirm Deletion"
+                saveLabel="Delete"
+                saveButtonClass="bg-red-600 hover:bg-red-700"
             >
                 <div className="space-y-4">
                     <p className="text-slate-600">
@@ -819,6 +831,24 @@ function RulesManager() {
                     </tbody>
                 </table>
             </div>
-        </div>
+
+
+            {/* Delete Confirmation Modal for Rules */}
+            <SubConfigModal
+                isOpen={!!deleteConfirmation}
+                onClose={() => setDeleteConfirmation(null)}
+                onSave={() => deleteConfirmation && handleDeleteRule(deleteConfirmation.id)}
+                title="Confirm Deletion"
+                saveLabel="Delete"
+                saveButtonClass="bg-red-600 hover:bg-red-700"
+            >
+                <div className="space-y-4">
+                    <p className="text-slate-600">
+                        Are you sure you want to delete this rule? This action cannot be undone.
+                    </p>
+                    <p className="font-medium text-slate-900">{deleteConfirmation?.description}</p>
+                </div>
+            </SubConfigModal>
+        </div >
     );
 }
