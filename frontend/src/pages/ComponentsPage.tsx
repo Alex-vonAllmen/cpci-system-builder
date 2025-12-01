@@ -164,7 +164,7 @@ export function ComponentsPage() {
                                     <input
                                         type="checkbox"
                                         id={option.id}
-                                        className="w-4 h-4 text-blue-600 rounded border-slate-300 focus:ring-blue-500"
+                                        className="w-4 h-4 text-duagon-blue rounded border-slate-300 focus:ring-duagon-blue"
                                         checked={!!tempOptions[option.id]}
                                         onChange={(e) => setTempOptions({ ...tempOptions, [option.id]: e.target.checked })}
                                     />
@@ -196,7 +196,7 @@ export function ComponentsPage() {
                     {hasCpuSelected ? (
                         <Link
                             to="/chassis"
-                            className="inline-flex items-center justify-center gap-2 bg-blue-600 text-white px-6 py-2 rounded-lg font-semibold hover:bg-blue-700 transition-colors"
+                            className="inline-flex items-center justify-center gap-2 bg-duagon-blue text-white px-6 py-2 rounded-lg font-semibold hover:bg-duagon-blue/90 transition-colors"
                         >
                             Next: Chassis
                             <ArrowRight size={18} />
@@ -238,7 +238,7 @@ export function ComponentsPage() {
                                             className={cn(
                                                 "h-10 rounded-lg text-sm font-bold transition-all border-2 relative",
                                                 selectedSlotId === slot.id
-                                                    ? "border-blue-600 bg-blue-50 text-blue-700"
+                                                    ? "border-duagon-blue bg-blue-50 text-duagon-blue"
                                                     : slot.componentId
                                                         ? "border-green-200 bg-green-50 text-green-700"
                                                         : isSlotBlocked

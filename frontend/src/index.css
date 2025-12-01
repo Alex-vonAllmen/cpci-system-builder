@@ -1,1 +1,10 @@
 @import "tailwindcss";
+
+@theme {
+    --color-duagon-blue: #002663;
+    --color-duagon-brown: #6c1c21;
+    --color-duagon-orange: #ce692f;
+    --color-duagon-bright-orange: #f59e33;
+    --color-duagon-petrol: #2a8f8c;
+    --color-duagon-black: #000000;
+}

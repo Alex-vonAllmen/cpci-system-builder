@@ -185,8 +185,10 @@ export function AdminPage() {
             a.download = `products_export_${new Date().toISOString().split('T')[0]}.json`;
             document.body.appendChild(a);
             a.click();
-            window.URL.revokeObjectURL(url);
-            document.body.removeChild(a);
+            setTimeout(() => {
+                window.URL.revokeObjectURL(url);
+                document.body.removeChild(a);
+            }, 100);
             toast.success("Products exported successfully.");
         } catch (error) {
             console.error("Export failed", error);
@@ -223,7 +225,7 @@ export function AdminPage() {
                             onClick={() => setActiveTab('products')}
                             className={cn(
                                 "px-4 py-2 text-sm font-medium rounded-md transition-colors",
-                                activeTab === 'products' ? "bg-blue-50 text-blue-700" : "text-slate-600 hover:bg-slate-50"
+                                activeTab === 'products' ? "bg-duagon-blue text-white" : "text-slate-600 hover:bg-slate-50"
                             )}
                         >
                             Products
@@ -232,7 +234,7 @@ export function AdminPage() {
                             onClick={() => setActiveTab('settings')}
                             className={cn(
                                 "px-4 py-2 text-sm font-medium rounded-md transition-colors",
-                                activeTab === 'settings' ? "bg-blue-50 text-blue-700" : "text-slate-600 hover:bg-slate-50"
+                                activeTab === 'settings' ? "bg-duagon-blue text-white" : "text-slate-600 hover:bg-slate-50"
                             )}
                         >
                             Settings
@@ -241,7 +243,7 @@ export function AdminPage() {
                             onClick={() => setActiveTab('rules')}
                             className={cn(
                                 "px-4 py-2 text-sm font-medium rounded-md transition-colors",
-                                activeTab === 'rules' ? "bg-blue-50 text-blue-700" : "text-slate-600 hover:bg-slate-50"
+                                activeTab === 'rules' ? "bg-duagon-blue text-white" : "text-slate-600 hover:bg-slate-50"
                             )}
                         >
                             Rules
@@ -276,7 +278,7 @@ export function AdminPage() {
                                         setIsEditing(false);
                                         setIsCreating(true);
                                     }}
-                                    className="flex items-center gap-2 bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition-colors"
+                                    className="flex items-center gap-2 bg-duagon-blue text-white px-4 py-2 rounded-lg hover:bg-duagon-blue/90 transition-colors"
                                 >
                                     <Plus size={18} />
                                     Add Product
@@ -451,7 +453,7 @@ export function AdminPage() {
 
                                     <div className="col-span-2 flex justify-end gap-2 mt-4">
                                         <button type="button" onClick={() => setIsCreating(false)} className="px-4 py-2 text-slate-600 hover:bg-slate-50 rounded-lg">Cancel</button>
-                                        <button type="submit" className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700">
+                                        <button type="submit" className="px-4 py-2 bg-duagon-blue text-white rounded-lg hover:bg-duagon-blue/90">
                                             {isEditing ? 'Update Product' : 'Create Product'}
                                         </button>
                                     </div>
@@ -487,7 +489,7 @@ export function AdminPage() {
                                                 <td className="px-6 py-4 flex gap-2">
                                                     <button
                                                         onClick={() => handleEditProduct(product)}
-                                                        className="p-1 text-blue-600 hover:bg-blue-50 rounded-lg transition-colors"
+                                                        className="p-1 text-duagon-blue hover:bg-blue-50 rounded-lg transition-colors"
                                                         title="Edit Product"
                                                     >
                                                         <Edit size={18} />
@@ -525,7 +527,7 @@ export function AdminPage() {
                                     />
                                     <button
                                         onClick={() => handleSaveSetting('central_email', settings['central_email'])}
-                                        className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 font-medium"
+                                        className="px-4 py-2 bg-duagon-blue text-white rounded-lg hover:bg-duagon-blue/90 font-medium"
                                     >
                                         Save
                                     </button>
@@ -690,8 +692,10 @@ function RulesManager() {
             a.download = `rules_export_${new Date().toISOString().split('T')[0]}.json`;
             document.body.appendChild(a);
             a.click();
-            window.URL.revokeObjectURL(url);
-            document.body.removeChild(a);
+            setTimeout(() => {
+                window.URL.revokeObjectURL(url);
+                document.body.removeChild(a);
+            }, 100);
             toast.success("Rules exported successfully.");
         } catch (error) {
             console.error("Export failed", error);
@@ -742,7 +746,7 @@ function RulesManager() {
                             setIsEditing(false);
                             setIsCreating(true);
                         }}
-                        className="flex items-center gap-2 bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition-colors"
+                        className="flex items-center gap-2 bg-duagon-blue text-white px-4 py-2 rounded-lg hover:bg-duagon-blue/90 transition-colors"
                     >
                         <Plus size={18} />
                         Add Rule
@@ -778,7 +782,7 @@ function RulesManager() {
                         </div>
                         <div className="flex justify-end gap-2">
                             <button type="button" onClick={() => setIsCreating(false)} className="px-4 py-2 text-slate-600 hover:bg-slate-50 rounded-lg">Cancel</button>
-                            <button type="submit" className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700">
+                            <button type="submit" className="px-4 py-2 bg-duagon-blue text-white rounded-lg hover:bg-duagon-blue/90">
                                 {isEditing ? 'Update Rule' : 'Create Rule'}
                             </button>
                         </div>

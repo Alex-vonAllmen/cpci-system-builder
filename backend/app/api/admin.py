@@ -54,10 +54,21 @@ def read_products(skip: int = 0, limit: int = 100, db: Session = Depends(get_db)
     products = db.query(models.Product).offset(skip).limit(limit).all()
     return products
 
-@router.get("/products/export", response_model=List[schemas.Product])
+@router.get("/products/export")
 def export_products(db: Session = Depends(get_db), admin: str = Depends(get_current_admin)):
     products = db.query(models.Product).all()
-    return products
+    from fastapi.responses import Response
+    import json
+    
+    # Use Pydantic to serialize
+    product_list = [schemas.Product.model_validate(p).model_dump() for p in products]
+    json_content = json.dumps(product_list, indent=2, default=str)
+    
+    return Response(
+        content=json_content,
+        media_type="application/json",
+        headers={"Content-Disposition": "attachment; filename=products_export.json"}
+    )
 
 @router.post("/products/import")
 def import_products(products: List[schemas.ProductCreate], db: Session = Depends(get_db), admin: str = Depends(get_current_admin)):
@@ -126,10 +137,20 @@ def read_rules(skip: int = 0, limit: int = 100, db: Session = Depends(get_db)):
     rules = db.query(models.Rule).offset(skip).limit(limit).all()
     return rules
 
-@router.get("/rules/export", response_model=List[schemas.Rule])
+@router.get("/rules/export")
 def export_rules(db: Session = Depends(get_db), admin: str = Depends(get_current_admin)):
     rules = db.query(models.Rule).all()
-    return rules
+    from fastapi.responses import Response
+    import json
+    
+    rule_list = [schemas.Rule.model_validate(r).model_dump() for r in rules]
+    json_content = json.dumps(rule_list, indent=2, default=str)
+    
+    return Response(
+        content=json_content,
+        media_type="application/json",
+        headers={"Content-Disposition": "attachment; filename=rules_export.json"}
+    )
 
 @router.post("/rules/import")
 def import_rules(rules: List[schemas.RuleImport], db: Session = Depends(get_db), admin: str = Depends(get_current_admin)):

@@ -38,8 +38,8 @@ export function ComponentCard({ product, isSelected, onSelect, disabled, forbidd
             className={cn(
                 "relative flex flex-col p-4 rounded-xl border-2 transition-all cursor-pointer hover:shadow-md",
                 isSelected
-                    ? "border-blue-600 bg-blue-50"
-                    : "border-slate-200 bg-white hover:border-blue-300",
+                    ? "border-duagon-blue bg-blue-50"
+                    : "border-slate-200 bg-white hover:border-duagon-blue/50",
                 (disabled || forbidden) && "opacity-50 cursor-not-allowed hover:border-slate-200 hover:shadow-none bg-slate-50"
             )}
             onClick={() => !disabled && onSelect()}
@@ -49,7 +49,7 @@ export function ComponentCard({ product, isSelected, onSelect, disabled, forbidd
                     {product.type}
                 </div>
                 {isSelected && (
-                    <div className="bg-blue-600 text-white p-1 rounded-full">
+                    <div className="bg-duagon-blue text-white p-1 rounded-full">
                         <Check size={12} strokeWidth={3} />
                     </div>
                 )}
@@ -60,11 +60,11 @@ export function ComponentCard({ product, isSelected, onSelect, disabled, forbidd
 
             <div className="mt-auto border-t border-slate-100 pt-3 space-y-2">
                 <div className="flex items-center justify-between text-xs text-slate-500">
-                    <span className={cn(totalWidth !== product.widthHp && "font-bold text-blue-600")}>
+                    <span className={cn(totalWidth !== product.widthHp && "font-bold text-duagon-blue")}>
                         {totalWidth}HP
                     </span>
                     {product.heightU && <span>{product.heightU}U</span>}
-                    <span className={cn(totalPower !== product.powerWatts && "font-bold text-blue-600")}>
+                    <span className={cn(totalPower !== product.powerWatts && "font-bold text-duagon-blue")}>
                         {totalPower}W
                     </span>
                     {product.eol_date && (
@@ -79,7 +79,7 @@ export function ComponentCard({ product, isSelected, onSelect, disabled, forbidd
                 )}
             </div>
             <button
-                className="text-slate-400 hover:text-blue-600"
+                className="text-slate-400 hover:text-duagon-blue"
                 onClick={(e) => {
                     e.stopPropagation();
                     if (product.url) {

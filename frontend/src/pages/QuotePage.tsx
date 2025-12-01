@@ -532,7 +532,7 @@ export function QuotePage() {
                                             <span>€{(prototypeTotal * (prototypeQtyNum || 1)).toLocaleString()}</span>
                                         </div>
                                         {seriesQtyNum > 0 && (
-                                            <div className="flex justify-between items-center font-bold text-blue-600 mt-2">
+                                            <div className="flex justify-between items-center font-bold text-duagon-blue mt-2">
                                                 <span>Series Total ({seriesQtyNum} units)</span>
                                                 <span>€{(seriesTotal * seriesQtyNum).toLocaleString()}</span>
                                             </div>
@@ -699,7 +699,7 @@ export function QuotePage() {
                             type="submit"
                             disabled={isSubmitting}
                             className={cn(
-                                "w-full flex items-center justify-center gap-2 bg-blue-600 text-white py-3 rounded-lg font-bold hover:bg-blue-700 transition-all mt-6",
+                                "w-full flex items-center justify-center gap-2 bg-duagon-blue text-white py-3 rounded-lg font-bold hover:bg-duagon-blue/90 transition-all mt-6",
                                 isSubmitting && "opacity-75 cursor-wait"
                             )}
                         >

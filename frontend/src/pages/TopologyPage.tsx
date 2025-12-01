@@ -24,7 +24,7 @@ export function TopologyPage() {
                         {/* Slot Count Slider */}
                         <div className="space-y-3">
                             <label className="block text-sm font-medium text-slate-700">
-                                Number of Slots: <span className="font-bold text-blue-600">{slotCount}</span>
+                                Number of Slots: <span className="font-bold text-duagon-blue">{slotCount}</span>
                             </label>
                             <input
                                 type="range"
@@ -33,7 +33,7 @@ export function TopologyPage() {
                                 step="1"
                                 value={slotCount}
                                 onChange={(e) => setSlotCount(parseInt(e.target.value))}
-                                className="w-full h-2 bg-slate-200 rounded-lg appearance-none cursor-pointer accent-blue-600"
+                                className="w-full h-2 bg-slate-200 rounded-lg appearance-none cursor-pointer accent-duagon-blue"
                             />
                             <div className="flex justify-between text-xs text-slate-400">
                                 <span>2</span>
@@ -73,7 +73,7 @@ export function TopologyPage() {
                     <div className="flex justify-end">
                         <Link
                             to="/components"
-                            className="inline-flex items-center justify-center gap-2 bg-blue-600 text-white px-6 py-3 rounded-lg font-semibold hover:bg-blue-700 transition-colors w-full lg:w-auto"
+                            className="inline-flex items-center justify-center gap-2 bg-duagon-blue text-white px-6 py-3 rounded-lg font-semibold hover:bg-duagon-blue/90 transition-colors w-full lg:w-auto"
                         >
                             Next: Select Components
                             <ArrowRight size={18} />
