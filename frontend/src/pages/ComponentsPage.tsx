@@ -5,13 +5,14 @@ import { BackplaneVisualizer } from '../components/BackplaneVisualizer';
 import { ArrowLeft, ArrowRight, AlertCircle } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { SubConfigModal } from '../components/SubConfigModal';
+import { ProductDetailsModal } from '../components/ProductDetailsModal';
 import type { Product } from '../data/mockProducts';
 import { cn } from '../lib/utils';
 
 import { useToast } from '../components/ui/Toast';
 
 export function ComponentsPage() {
-    const { slots, setSlotComponent, setSlotOptions, products, fetchProducts, validateRules, chassisId, psuId, chassisOptions } = useConfigStore();
+    const { slots, setSlotComponent, setSlotOptions, products, fetchProducts, validateRules, psuId, getRemainingInterfaces } = useConfigStore();
     const [selectedSlotId, setSelectedSlotId] = useState<number | null>(1);
     const [categoryFilter, setCategoryFilter] = useState<string>('All');
     const toast = useToast();
@@ -22,6 +23,7 @@ export function ComponentsPage() {
 
     // Modal State
     const [configuringProduct, setConfiguringProduct] = useState<Product | null>(null);
+    const [viewingProduct, setViewingProduct] = useState<Product | null>(null);
     const [tempOptions, setTempOptions] = useState<Record<string, any>>({});
 
     const currentSlot = slots.find(s => s.id === selectedSlotId);
@@ -29,7 +31,7 @@ export function ComponentsPage() {
     const isBlocked = !!currentSlot?.blockedBy;
 
     // Calculate available slots based on Chassis and PSU
-    const chassis = products.find(p => p.id === chassisId);
+    // const chassis = products.find(p => p.id === chassisId); // Unused
     const psu = products.find(p => p.id === psuId);
 
     // Default to 9 slots if not set
@@ -178,6 +180,13 @@ export function ComponentsPage() {
                 </div>
             </SubConfigModal>
 
+            {/* Product Details Modal */}
+            <ProductDetailsModal
+                isOpen={!!viewingProduct}
+                onClose={() => setViewingProduct(null)}
+                product={viewingProduct}
+            />
+
             <div className="flex items-center justify-between">
                 <div>
                     <h1 className="text-3xl font-bold text-slate-900">Select Components</h1>
@@ -260,6 +269,8 @@ export function ComponentsPage() {
                         </div>
                     </div>
 
+
+
                     {/* Slot Status */}
                     <div className="bg-slate-50 p-4 rounded-xl border border-slate-200">
                         <div className="flex items-center gap-2 mb-2">
@@ -281,6 +292,44 @@ export function ComponentsPage() {
                                         : "Select a peripheral card (Storage, Network, I/O)."
                             }
                         </p>
+                    </div>
+
+                    {/* Internal Interfaces Tile */}
+                    <div className="bg-white p-6 rounded-xl shadow-sm border border-slate-200">
+                        <h2 className="text-lg font-semibold text-slate-900 mb-4">Internal Interfaces</h2>
+                        {hasCpuSelected ? (
+                            <div className="space-y-3">
+                                <div className="grid grid-cols-2 gap-3">
+                                    {Object.entries(getRemainingInterfaces(useConfigStore.getState())).map(([key, val]) => (
+                                        <div key={key} className={cn(
+                                            "p-3 rounded-lg border flex flex-col",
+                                            val < 0 ? "bg-red-50 border-red-200" : "bg-slate-50 border-slate-100"
+                                        )}>
+                                            <span className="text-xs uppercase text-slate-500 font-semibold mb-1">{key.replace('_', ' ')}</span>
+                                            <div className="flex items-end justify-between">
+                                                <span className={cn(
+                                                    "text-xl font-bold",
+                                                    val < 0 ? "text-red-600" : "text-slate-900"
+                                                )}>
+                                                    {val}
+                                                </span>
+                                                <span className="text-xs text-slate-400 mb-1">remaining</span>
+                                            </div>
+                                        </div>
+                                    ))}
+                                </div>
+                                {Object.values(getRemainingInterfaces(useConfigStore.getState())).some(v => v < 0) && (
+                                    <div className="flex items-start gap-2 text-red-600 text-sm bg-red-50 p-3 rounded-lg border border-red-100">
+                                        <AlertCircle size={16} className="mt-0.5 shrink-0" />
+                                        <p>Warning: Interface capacity exceeded. Some components may not function correctly.</p>
+                                    </div>
+                                )}
+                            </div>
+                        ) : (
+                            <div className="text-center py-8 text-slate-400 bg-slate-50 rounded-lg border border-dashed border-slate-200">
+                                <p>Select a CPU to view available interfaces.</p>
+                            </div>
+                        )}
                     </div>
                 </div>
 
@@ -318,8 +367,9 @@ export function ComponentsPage() {
                                     product={product}
                                     isSelected={currentSlot?.componentId === product.id}
                                     onSelect={() => handleSelectProduct(product)}
+                                    onViewDetails={() => setViewingProduct(product)}
                                     forbidden={isProhibited(product)}
-                                    selectedOptions={currentSlot?.componentId === product.id ? currentSlot.selectedOptions : undefined}
+                                    selectedOptions={currentSlot?.componentId === product.id ? currentSlot?.selectedOptions : undefined}
                                 />
                             ))}
                         </div>
@@ -342,6 +392,5 @@ export function ComponentsPage() {
                 </div>
             </div>
         </div>
-
     );
 }

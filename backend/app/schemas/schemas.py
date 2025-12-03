@@ -1,5 +1,5 @@
 from pydantic import BaseModel
-from typing import List, Optional, Any
+from typing import List, Optional, Any, Dict
 
 # Product Schemas
 class ProductBase(BaseModel):
@@ -21,6 +21,7 @@ class ProductBase(BaseModel):
     height_u: Optional[int] = None
     connectors: Optional[List[str]] = None
     options: Optional[Any] = None
+    interfaces: Optional[Dict[str, int]] = None
 
 class ProductCreate(ProductBase):
     pass

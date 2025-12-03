@@ -23,6 +23,7 @@ class Product(Base):
     height_u = Column(Integer, nullable=True) # Rack Unit Height (3 or 4)
     connectors = Column(JSON, nullable=True) # List of strings ["P1", "P2", ...]
     options = Column(JSON, nullable=True)  # e.g., {"conformal_coating": true}
+    interfaces = Column(JSON, nullable=True) # { "pcie_x1": 2, "sata": 1, ... }
 
     # Relationships can be added here if needed
 

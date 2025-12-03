@@ -24,6 +24,15 @@ products = [
         "price_100": 2200,
         "price_250": 2100,
         "price_500": 2000,
+        "interfaces": {
+            "pcie_x4": 4,
+            "pcie_x1": 4,
+            "sata": 4,
+            "usb_2": 8,
+            "usb_3": 4,
+            "eth_1g": 2,
+            "gpio": 16
+        },
         "options": [
             {
                 "id": "ram",
@@ -61,6 +70,15 @@ products = [
         "price_100": 1650,
         "price_250": 1600,
         "price_500": 1550,
+        "interfaces": {
+            "pcie_x4": 8,
+            "pcie_x1": 8,
+            "sata": 4,
+            "usb_2": 8,
+            "usb_3": 6,
+            "eth_1g": 2,
+            "gpio": 16
+        },
     },
     {
         "id": "G029M",
@@ -75,6 +93,14 @@ products = [
         "price_100": 2500,
         "price_250": 2400,
         "price_500": 2300,
+        "interfaces": {
+            "pcie_x8": 2,
+            "pcie_x4": 4,
+            "sata": 6,
+            "usb_3": 4,
+            "eth_10g": 2,
+            "gpio": 16
+        },
         "options": [
             {
                 "id": "interface",
@@ -101,6 +127,9 @@ products = [
         "price_100": 420,
         "price_250": 410,
         "price_500": 400,
+        "interfaces": {
+            "pcie_x4": 1
+        },
         "options": [
             {
                 "id": "drive1",
@@ -128,6 +157,9 @@ products = [
         "price_100": 540,
         "price_250": 520,
         "price_500": 500,
+        "interfaces": {
+            "usb_3": 1
+        },
         "options": [
             {
                 "id": "slot1",
@@ -166,6 +198,9 @@ products = [
         "price_100": 270,
         "price_250": 260,
         "price_500": 250,
+        "interfaces": {
+            "sata": 1
+        },
         "options": []
     },
     {
@@ -181,6 +216,9 @@ products = [
         "price_100": 520,
         "price_250": 510,
         "price_500": 500,
+        "interfaces": {
+            "pcie_x1": 1
+        },
         "options": []
     },
     {
@@ -196,6 +234,9 @@ products = [
         "price_100": 370,
         "price_250": 360,
         "price_500": 350,
+        "interfaces": {
+            "pcie_x1": 1
+        },
         "options": []
     },
     {

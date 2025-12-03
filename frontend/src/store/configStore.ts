@@ -35,6 +35,7 @@ interface ConfigState {
     fetchExamples: () => Promise<void>;
     importConfig: (config: any) => void;
     validateRules: (state: any) => string[];
+    getRemainingInterfaces: (state: any) => Record<string, number>;
 }
 
 export const useConfigStore = create<ConfigState>((set) => ({
@@ -384,12 +385,83 @@ export const useConfigStore = create<ConfigState>((set) => ({
         };
     }),
 
+    getRemainingInterfaces: (state: any) => {
+        const { slots, products } = state;
+        const remaining: Record<string, number> = {};
+
+        // Find System Slot (CPU)
+        const systemSlot = slots.find((s: any) => s.type === 'system');
+        if (!systemSlot || !systemSlot.componentId) return remaining;
+
+        const cpu = products.find((p: any) => p.id === systemSlot.componentId);
+        if (!cpu || !cpu.interfaces) return remaining;
+
+        // Initialize with CPU capacity
+        Object.entries(cpu.interfaces).forEach(([key, val]) => {
+            remaining[key] = Number(val);
+        });
+
+        // Subtract peripheral consumption
+        slots.forEach((slot: any) => {
+            if (slot.type === 'peripheral' && slot.componentId && !slot.blockedBy) {
+                const p = products.find((prod: any) => prod.id === slot.componentId);
+                if (p && p.interfaces) {
+                    Object.entries(p.interfaces).forEach(([key, val]) => {
+                        if (remaining[key] !== undefined) {
+                            remaining[key] -= Number(val);
+                        }
+                    });
+                }
+            }
+        });
+
+        return remaining;
+    },
+
     validateRules: (proposedState) => {
         const { rules, slots, chassisId, psuId, slotCount, products } = proposedState;
         const violations: string[] = [];
 
+        // --- Interface Validation ---
+        // We can reuse the logic from getRemainingInterfaces but we need to run it on proposedState
+        // Since getRemainingInterfaces is a store function, we can't call it easily on a plain object unless we extract the logic.
+        // Let's inline the logic or extract a helper outside the store.
+
+        const remaining: Record<string, number> = {};
+        const systemSlot = slots.find((s: any) => s.type === 'system');
+        if (systemSlot && systemSlot.componentId) {
+            const cpu = products.find((p: any) => p.id === systemSlot.componentId);
+            if (cpu && cpu.interfaces) {
+                Object.entries(cpu.interfaces).forEach(([key, val]) => {
+                    remaining[key] = Number(val);
+                });
+
+                slots.forEach((slot: any) => {
+                    if (slot.type === 'peripheral' && slot.componentId && !slot.blockedBy) {
+                        const p = products.find((prod: any) => prod.id === slot.componentId);
+                        if (p && p.interfaces) {
+                            Object.entries(p.interfaces).forEach(([key, val]) => {
+                                if (remaining[key] !== undefined) {
+                                    remaining[key] -= Number(val);
+                                }
+                            });
+                        }
+                    }
+                });
+
+                // Check for negative values
+                Object.entries(remaining).forEach(([key, val]) => {
+                    if (val < 0) {
+                        violations.push(`Insufficient ${key} interfaces. (Overrun by ${Math.abs(val)})`);
+                    }
+                });
+            }
+        }
+
         // Calculate Widths
         const backplaneWidth = slotCount * 4; // Total capacity of the backplane
+
+        // ... (rest of existing validation logic)
 
         // Calculate Used Width (Components + PSU)
         let usedWidth = 0;

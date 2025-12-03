@@ -21,6 +21,7 @@ export interface Product {
     heightU?: number;
     connectors?: string[];
     options?: ProductOption[];
+    interfaces?: Record<string, number>;
 }
 
 export const MOCK_PRODUCTS: Product[] = [

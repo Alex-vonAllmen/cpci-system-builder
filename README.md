@@ -138,9 +138,8 @@ Proprietary - duagon AG
 
 ## ToDo
 
-- Number of available PCIe lanes (e.g., two G506A with fat pipes)
-- Number of SATA lanes
-- Number of available USB ports
+
+- Add external interfaces available (e.g., 2x USB 3.2 Gen 2)
 - Power dependant requirement for fan tray
 - Matching product options to article numbers
 - Improve PDF quote generation
@@ -149,6 +148,9 @@ Proprietary - duagon AG
   - SBB Rack
   - OMTS Rack
   - SBB APFZ
+- Number of available PCIe lanes (e.g., two G506A with fat pipes) - DONE
+- Number of SATA lanes - DONE
+- Number of available USB ports - DONE
 
 ## Issues
 - PDF quote only contains single prices

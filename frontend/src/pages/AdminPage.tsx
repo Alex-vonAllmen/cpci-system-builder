@@ -75,6 +75,7 @@ export function AdminPage() {
         eol_date: '',
         height_u: 0,
         connectors: [] as string[],
+        interfaces: [] as { type: string, count: number }[], // Array for form handling
         image_url: '',
         url: '',
     });
@@ -99,9 +100,18 @@ export function AdminPage() {
     const handleSaveProduct = async (e: React.FormEvent) => {
         e.preventDefault();
         try {
+            // Convert interfaces array to object
+            const interfacesObj: Record<string, number> = {};
+            newProduct.interfaces.forEach(i => {
+                if (i.type && i.count) {
+                    interfacesObj[i.type] = i.count;
+                }
+            });
+
             const productData = {
                 ...newProduct,
                 options: newProduct.options ? JSON.parse(newProduct.options) : null,
+                interfaces: Object.keys(interfacesObj).length > 0 ? interfacesObj : null,
             };
 
             if (isEditing) {
@@ -130,6 +140,7 @@ export function AdminPage() {
                 eol_date: '',
                 height_u: 0,
                 connectors: [],
+                interfaces: [],
                 image_url: '',
                 url: '',
             });
@@ -141,6 +152,11 @@ export function AdminPage() {
     };
 
     const handleEditProduct = (product: any) => {
+        // Convert interfaces object to array
+        const interfacesArray = product.interfaces
+            ? Object.entries(product.interfaces).map(([type, count]) => ({ type, count: Number(count) }))
+            : [];
+
         setNewProduct({
             id: product.id,
             type: product.type,
@@ -158,6 +174,7 @@ export function AdminPage() {
             eol_date: product.eol_date || '',
             height_u: product.heightU || 0,
             connectors: product.connectors || [],
+            interfaces: interfacesArray,
             image_url: product.image_url || '',
             url: product.url || '',
         });
@@ -283,7 +300,7 @@ export function AdminPage() {
                                         setNewProduct({
                                             id: '', type: 'cpu', name: '', description: '', power_watts: 0, width_hp: 4,
                                             price_1: 0, price_25: 0, price_50: 0, price_100: 0, price_250: 0, price_500: 0,
-                                            options: '', eol_date: '', height_u: 0, connectors: [], image_url: '', url: ''
+                                            options: '', eol_date: '', height_u: 0, connectors: [], interfaces: [], image_url: '', url: ''
                                         });
                                         setIsEditing(false);
                                         setIsCreating(true);
@@ -420,6 +437,80 @@ export function AdminPage() {
                                                 </label>
                                             ))}
                                         </div>
+                                    </div>
+
+                                    <div className="col-span-2 space-y-2 border-t pt-4 mt-2">
+                                        <div className="flex justify-between items-center">
+                                            <label className="text-sm font-medium text-slate-700">Internal Interfaces</label>
+                                            <button
+                                                type="button"
+                                                onClick={() => setNewProduct({
+                                                    ...newProduct,
+                                                    interfaces: [...newProduct.interfaces, { type: '', count: 1 }]
+                                                })}
+                                                className="text-xs flex items-center gap-1 text-duagon-blue hover:underline"
+                                            >
+                                                <Plus size={14} /> Add Interface
+                                            </button>
+                                        </div>
+
+                                        {newProduct.interfaces.length === 0 && (
+                                            <p className="text-xs text-slate-500 italic">No internal interfaces defined.</p>
+                                        )}
+
+                                        <div className="space-y-2">
+                                            {newProduct.interfaces.map((iface, idx) => (
+                                                <div key={idx} className="flex gap-2 items-center">
+                                                    <select
+                                                        className="flex-1 px-3 py-2 border border-slate-300 rounded-lg text-sm"
+                                                        value={iface.type}
+                                                        onChange={e => {
+                                                            const newInterfaces = [...newProduct.interfaces];
+                                                            newInterfaces[idx].type = e.target.value;
+                                                            setNewProduct({ ...newProduct, interfaces: newInterfaces });
+                                                        }}
+                                                    >
+                                                        <option value="">Select Type...</option>
+                                                        <option value="pcie_x1">PCIe x1</option>
+                                                        <option value="pcie_x4">PCIe x4</option>
+                                                        <option value="pcie_x8">PCIe x8</option>
+                                                        <option value="pcie_x16">PCIe x16</option>
+                                                        <option value="sata">SATA</option>
+                                                        <option value="usb_2">USB 2.0</option>
+                                                        <option value="usb_3">USB 3.0</option>
+                                                        <option value="ethernet_1g">Ethernet 1G</option>
+                                                        <option value="ethernet_10g">Ethernet 10G</option>
+                                                        <option value="serial">Serial (UART)</option>
+                                                        <option value="gpio">GPIO</option>
+                                                    </select>
+                                                    <input
+                                                        type="number"
+                                                        className="w-24 px-3 py-2 border border-slate-300 rounded-lg text-sm"
+                                                        value={iface.count}
+                                                        onChange={e => {
+                                                            const newInterfaces = [...newProduct.interfaces];
+                                                            newInterfaces[idx].count = Number(e.target.value);
+                                                            setNewProduct({ ...newProduct, interfaces: newInterfaces });
+                                                        }}
+                                                        placeholder="Count"
+                                                    />
+                                                    <button
+                                                        type="button"
+                                                        onClick={() => {
+                                                            const newInterfaces = newProduct.interfaces.filter((_, i) => i !== idx);
+                                                            setNewProduct({ ...newProduct, interfaces: newInterfaces });
+                                                        }}
+                                                        className="text-red-500 hover:text-red-700 p-2"
+                                                    >
+                                                        <Trash2 size={16} />
+                                                    </button>
+                                                </div>
+                                            ))}
+                                        </div>
+                                        <p className="text-xs text-slate-500">
+                                            For CPUs, this defines <strong>capacity</strong> (positive). For peripherals, this defines <strong>consumption</strong> (positive).
+                                            The system will subtract peripheral consumption from CPU capacity.
+                                        </p>
                                     </div>
 
                                     <div className="col-span-2 grid grid-cols-3 gap-4 border-t pt-4 mt-2">
