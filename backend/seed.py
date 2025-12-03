@@ -1,5 +1,6 @@
 from app.db.session import SessionLocal, engine, Base
 from app.models import models
+from app.models.example import ExampleConfig
 import json
 
 # Create tables if they don't exist
@@ -399,26 +400,26 @@ def seed():
     # Seed Rules
     rules = [
         {
-            "description": "Forbid 40HP Chassis if > 5 slots",
+            "description": "Forbid 40HP Chassis if > 40HP width",
             "definition": {
                 "conditions": [
-                    { "type": "system_property", "property": "slotCount", "operator": "gt", "value": 5 }
+                    { "type": "system_property", "property": "totalWidth", "operator": "gt", "value": 40 }
                 ],
                 "actions": [
-                    { "type": "forbid", "componentId": "C_4U_40HP", "message": "4U Compact Chassis (40HP) supports max 5 slots." },
-                    { "type": "forbid", "componentId": "C_3U_40HP", "message": "3U Compact Chassis (40HP) supports max 5 slots." }
+                    { "type": "forbid", "componentId": "C_4U_40HP", "message": "4U Compact Chassis (40HP) cannot support current configuration width." },
+                    { "type": "forbid", "componentId": "C_3U_40HP", "message": "3U Compact Chassis (40HP) cannot support current configuration width." }
                 ]
             }
         },
         {
-            "description": "Forbid 84HP Chassis if > 21 slots",
+            "description": "Forbid 84HP Chassis if > 84HP width",
             "definition": {
                 "conditions": [
-                    { "type": "system_property", "property": "slotCount", "operator": "gt", "value": 21 }
+                    { "type": "system_property", "property": "totalWidth", "operator": "gt", "value": 84 }
                 ],
                 "actions": [
-                    { "type": "forbid", "componentId": "C_4U_84HP", "message": "4U Rack Mount Chassis (84HP) supports max 21 slots." },
-                    { "type": "forbid", "componentId": "C_3U_84HP", "message": "3U Rack Mount Chassis (84HP) supports max 21 slots." }
+                    { "type": "forbid", "componentId": "C_4U_84HP", "message": "4U Rack Mount Chassis (84HP) cannot support current configuration width." },
+                    { "type": "forbid", "componentId": "C_3U_84HP", "message": "3U Rack Mount Chassis (84HP) cannot support current configuration width." }
                 ]
             }
         }
@@ -431,7 +432,80 @@ def seed():
             db.add(models.Rule(**r_data))
         else:
             print(f"Updating rule: {r_data['description']}")
+            print(f"Updating rule: {r_data['description']}")
             existing_rule.definition = r_data["definition"]
+
+    # Seed Examples
+    examples = [
+        {
+            "name": "Basic Control System",
+            "description": "3U System with G25A CPU and Storage, ideal for industrial control.",
+            "config_json": json.dumps({
+                "slotCount": 10,
+                "systemSlotPosition": "left",
+                "chassisId": "C_3U_40HP",
+                "psuId": "P_3U_300W",
+                "slots": [
+                    {"id": 1, "type": "system", "componentId": "G25A", "selectedOptions": {}, "width": 4},
+                    {"id": 2, "type": "peripheral", "componentId": "G51", "selectedOptions": {}, "width": 4},
+                    {"id": 3, "type": "peripheral", "componentId": "G211", "selectedOptions": {}, "width": 4},
+                    {"id": 4, "type": "peripheral", "componentId": None, "selectedOptions": {}, "width": 4},
+                    {"id": 5, "type": "peripheral", "componentId": None, "selectedOptions": {}, "width": 4},
+                    {"id": 6, "type": "peripheral", "componentId": None, "selectedOptions": {}, "width": 4},
+                    {"id": 7, "type": "peripheral", "componentId": None, "selectedOptions": {}, "width": 4},
+                    {"id": 8, "type": "peripheral", "componentId": None, "selectedOptions": {}, "width": 4},
+                    {"id": 9, "type": "peripheral", "componentId": None, "selectedOptions": {}, "width": 4},
+                    {"id": 10, "type": "peripheral", "componentId": None, "selectedOptions": {}, "width": 4}
+                ]
+            }),
+            "image_url": "https://www.duagon.com/fileadmin/_processed_/c/6/csm_G25A_front_1_d2b0c9c0c3.png"
+        },
+        {
+            "name": "High Performance Data Logger",
+            "description": "4U System with G28 CPU, multiple storage and network interfaces.",
+            "config_json": json.dumps({
+                "slotCount": 21,
+                "systemSlotPosition": "left",
+                "chassisId": "C_4U_84HP",
+                "psuId": "P_4U_600W",
+                "slots": [
+                    {"id": 1, "type": "system", "componentId": "G28", "selectedOptions": {}, "width": 4},
+                    {"id": 2, "type": "peripheral", "componentId": "G51", "selectedOptions": {}, "width": 4},
+                    {"id": 3, "type": "peripheral", "componentId": "G51", "selectedOptions": {}, "width": 4},
+                    {"id": 4, "type": "peripheral", "componentId": "G211", "selectedOptions": {}, "width": 4},
+                    {"id": 5, "type": "peripheral", "componentId": "G211", "selectedOptions": {}, "width": 4},
+                    {"id": 6, "type": "peripheral", "componentId": "G239", "selectedOptions": {}, "width": 4},
+                    {"id": 7, "type": "peripheral", "componentId": None, "selectedOptions": {}, "width": 4},
+                    {"id": 8, "type": "peripheral", "componentId": None, "selectedOptions": {}, "width": 4},
+                    {"id": 9, "type": "peripheral", "componentId": None, "selectedOptions": {}, "width": 4},
+                    {"id": 10, "type": "peripheral", "componentId": None, "selectedOptions": {}, "width": 4},
+                    {"id": 11, "type": "peripheral", "componentId": None, "selectedOptions": {}, "width": 4},
+                    {"id": 12, "type": "peripheral", "componentId": None, "selectedOptions": {}, "width": 4},
+                    {"id": 13, "type": "peripheral", "componentId": None, "selectedOptions": {}, "width": 4},
+                    {"id": 14, "type": "peripheral", "componentId": None, "selectedOptions": {}, "width": 4},
+                    {"id": 15, "type": "peripheral", "componentId": None, "selectedOptions": {}, "width": 4},
+                    {"id": 16, "type": "peripheral", "componentId": None, "selectedOptions": {}, "width": 4},
+                    {"id": 17, "type": "peripheral", "componentId": None, "selectedOptions": {}, "width": 4},
+                    {"id": 18, "type": "peripheral", "componentId": None, "selectedOptions": {}, "width": 4},
+                    {"id": 19, "type": "peripheral", "componentId": None, "selectedOptions": {}, "width": 4},
+                    {"id": 20, "type": "peripheral", "componentId": None, "selectedOptions": {}, "width": 4},
+                    {"id": 21, "type": "peripheral", "componentId": None, "selectedOptions": {}, "width": 4}
+                ]
+            }),
+            "image_url": "https://www.duagon.com/fileadmin/_processed_/5/1/csm_G28_front_1_7a0a0a0a0a.png"
+        }
+    ]
+
+    for ex_data in examples:
+        existing_ex = db.query(ExampleConfig).filter(ExampleConfig.name == ex_data["name"]).first()
+        if not existing_ex:
+            print(f"Creating example: {ex_data['name']}")
+            db.add(ExampleConfig(**ex_data))
+        else:
+            print(f"Updating example: {ex_data['name']}")
+            existing_ex.description = ex_data["description"]
+            existing_ex.config_json = ex_data["config_json"]
+            existing_ex.image_url = ex_data["image_url"]
 
     db.commit()
     print("Seeding complete.")

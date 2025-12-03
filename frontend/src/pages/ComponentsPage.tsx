@@ -63,7 +63,7 @@ export function ComponentsPage() {
     });
 
     // Helper to check if a product is forbidden for the current slot
-    const isForbidden = (product: Product) => {
+    const isProhibited = (product: Product) => {
         if (!currentSlot) return false;
         const proposedState = {
             ...useConfigStore.getState(),
@@ -84,7 +84,7 @@ export function ComponentsPage() {
         }
 
         // Check rules
-        if (isForbidden(product)) {
+        if (isProhibited(product)) {
             const proposedState = {
                 ...useConfigStore.getState(),
                 slots: slots.map(s => s.id === currentSlot?.id ? { ...s, componentId: product.id } : s)
@@ -316,7 +316,7 @@ export function ComponentsPage() {
                                     product={product}
                                     isSelected={currentSlot?.componentId === product.id}
                                     onSelect={() => handleSelectProduct(product)}
-                                    forbidden={isForbidden(product)}
+                                    forbidden={isProhibited(product)}
                                     selectedOptions={currentSlot?.componentId === product.id ? currentSlot.selectedOptions : undefined}
                                 />
                             ))}

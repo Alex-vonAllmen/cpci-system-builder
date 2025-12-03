@@ -397,15 +397,35 @@ export function QuotePage() {
     }
 
     const handleDownloadJSON = () => {
-        const bomData = selectedItems.map(item => ({
-            slot: item.slotLabel,
-            component: item.product.name,
-            partNumber: item.product.id,
-            connectors: item.product.connectors || [],
-            options: item.options
-        }));
+        const fullConfig = {
+            slotCount: slots.length,
+            systemSlotPosition: useConfigStore.getState().systemSlotPosition,
+            chassisId,
+            chassisOptions,
+            psuId,
+            psuOptions,
+            slots: slots.map(s => ({
+                id: s.id,
+                type: s.type,
+                componentId: s.componentId,
+                selectedOptions: s.selectedOptions,
+                width: s.width,
+                blockedBy: s.blockedBy
+            }))
+        };
 
-        const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(bomData, null, 2));
+        const exportData = {
+            bom: selectedItems.map(item => ({
+                slot: item.slotLabel,
+                component: item.product.name,
+                partNumber: item.product.id,
+                connectors: item.product.connectors || [],
+                options: item.options
+            })),
+            config: fullConfig
+        };
+
+        const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(exportData, null, 2));
         const downloadAnchorNode = document.createElement('a');
         downloadAnchorNode.setAttribute("href", dataStr);
         downloadAnchorNode.setAttribute("download", "system_configuration.json");

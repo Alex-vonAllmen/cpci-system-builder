@@ -135,3 +135,21 @@ Rules are defined in the Admin > Rules tab using a flexible JSON format:
 ## License
 
 Proprietary - duagon AG
+
+## ToDo
+
+- Number of available PCIe lanes (e.g., two G506A with fat pipes)
+- Number of SATA lanes
+- Number of available USB ports
+- Instead of selecting slots at the beginning, you should select half- or full 19"-inch rack; information in centimeters instead of HP, U
+- Power dependant requirement for fan tray
+- Matching product options to article numbers
+- Improve PDF quote generation
+- Example configurations based on existings
+  - SBB Rack
+  - OMTS Rack
+  - SBB APFZ
+
+## Issues
+- PDF quote only contains single prices
+- Rule with G239 in slot 2 does not work if G28 is in slot 1 and extends to slot 2

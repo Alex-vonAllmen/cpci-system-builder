@@ -31,6 +31,9 @@ interface ConfigState {
     setPsu: (psuId: string | null, options?: Record<string, any>) => void;
     fetchProducts: () => Promise<void>;
     resetConfig: () => void;
+    examples: any[];
+    fetchExamples: () => Promise<void>;
+    importConfig: (config: any) => void;
     validateRules: (state: any) => string[];
 }
 
@@ -257,41 +260,113 @@ export const useConfigStore = create<ConfigState>((set) => ({
 
     rules: [],
 
+    examples: [],
+    fetchExamples: async () => {
+        try {
+            const { api } = await import('../services/api');
+            const response = await api.examples.list();
+            set({ examples: response });
+        } catch (error) {
+            console.error('Failed to fetch examples:', error);
+        }
+    },
+
+    importConfig: (config: any) => set((state) => {
+        // Validate config structure roughly?
+        if (!config || !config.slots) {
+            console.error("Invalid config object");
+            return state;
+        }
+
+        return {
+            ...state,
+            slotCount: config.slotCount || 21,
+            systemSlotPosition: config.systemSlotPosition || 'left',
+            chassisId: config.chassisId || null,
+            chassisOptions: config.chassisOptions || {},
+            psuId: config.psuId || null,
+            psuOptions: config.psuOptions || {},
+            slots: config.slots || [],
+        };
+    }),
+
     validateRules: (proposedState) => {
         const { rules, slots, chassisId, psuId, slotCount, products } = proposedState;
         const violations: string[] = [];
 
-        // 1. Check Total Width vs Chassis Width
+        // Calculate Widths
+        const backplaneWidth = slotCount * 4; // Total capacity of the backplane
+
+        // Calculate Used Width (Components + PSU)
+        let usedWidth = 0;
+
+        // Sum component widths
+        slots.forEach((slot: any) => {
+            if (slot.componentId) {
+                const product = products.find((p: any) => p.id === slot.componentId);
+                if (product) {
+                    let w = product.width_hp || 4;
+                    // Add option widths if any
+                    if (slot.selectedOptions && product.options) {
+                        product.options.forEach((opt: any) => {
+                            const val = slot.selectedOptions[opt.id];
+                            if (val) {
+                                const choice = opt.choices?.find((c: any) => c.value === val);
+                                if (choice && choice.widthMod) w += choice.widthMod;
+                            }
+                        });
+                    }
+                    usedWidth += w;
+                } else {
+                    usedWidth += 4; // Default if product not found but ID exists?
+                }
+            }
+        });
+
+        let psuWidth = 0;
+        if (psuId) {
+            const psu = products.find((p: any) => p.id === psuId);
+            if (psu) psuWidth = psu.width_hp || 0;
+        }
+        usedWidth += psuWidth;
+
+        // 0. Global Limit Check (Used Width)
+        if (usedWidth > 84) {
+            violations.push(`Configuration used width (${usedWidth}HP) exceeds the maximum system limit of 84HP.`);
+        }
+        // Also check backplane limit just in case
+        if (backplaneWidth > 84) {
+            violations.push(`Backplane size (${backplaneWidth}HP) exceeds the maximum system limit of 84HP.`);
+        }
+
+        // 1. Check Backplane vs Chassis Width
         if (chassisId) {
             const chassis = products.find((p: any) => p.id === chassisId);
             if (chassis && chassis.width_hp) {
-                const backplaneWidth = slotCount * 4; // Assuming 4HP per slot
-
-                let psuWidth = 0;
-                if (psuId) {
-                    const psu = products.find((p: any) => p.id === psuId);
-                    if (psu) psuWidth = psu.width_hp || 0;
+                // Check if backplane fits in chassis
+                if (backplaneWidth > chassis.width_hp) {
+                    violations.push(`Backplane size (${backplaneWidth}HP) exceeds chassis capacity (${chassis.width_hp}HP).`);
                 }
 
-                const totalRequiredWidth = backplaneWidth + psuWidth;
-
-                if (totalRequiredWidth > chassis.width_hp) {
-                    violations.push(`Configuration requires ${totalRequiredWidth}HP (Slots: ${backplaneWidth}HP + PSU: ${psuWidth}HP), but selected chassis (${chassis.name}) only supports ${chassis.width_hp}HP.`);
+                // Check if used width fits in backplane (and thus chassis)
+                // Actually, used width must fit in the available slots.
+                // But simplified: Used Width <= Backplane Width
+                if (usedWidth > backplaneWidth) {
+                    violations.push(`Total used width (${usedWidth}HP) exceeds backplane capacity (${backplaneWidth}HP).`);
                 }
             }
         }
+
+        // Map totalWidth to usedWidth for rules
+        const totalWidth = usedWidth;
 
         rules.forEach((rule: any) => {
             const def = rule.definition;
             if (!def || !def.conditions || !def.actions) return;
 
             // Check conditions
-            // Logic: If ALL conditions match (AND), then apply actions
-            // TODO: Support OR logic if needed, currently assuming AND
-
             const conditionsMet = def.conditions.every((cond: any) => {
                 if (cond.type === 'component_selected') {
-                    // Check if component is in specific slot or any slot
                     if (cond.slotIndex) {
                         const slot = slots.find((s: any) => s.id === cond.slotIndex);
                         return slot && slot.componentId === cond.componentId;
@@ -304,9 +379,13 @@ export const useConfigStore = create<ConfigState>((set) => ({
                         if (cond.operator === 'lt') return slotCount < cond.value;
                         if (cond.operator === 'eq') return slotCount === cond.value;
                     }
+                    if (cond.property === 'totalWidth') {
+                        if (cond.operator === 'gt') return totalWidth > cond.value;
+                        if (cond.operator === 'lt') return totalWidth < cond.value;
+                        if (cond.operator === 'eq') return totalWidth === cond.value;
+                    }
                     if (cond.property === 'chassisId') {
                         if (cond.operator === 'eq') return chassisId === cond.value;
-                        // Helper for partial match (e.g. "contains")
                         if (cond.operator === 'contains' && chassisId) return chassisId.includes(cond.value);
                     }
                 }
@@ -314,12 +393,9 @@ export const useConfigStore = create<ConfigState>((set) => ({
             });
 
             if (conditionsMet) {
-                // Apply actions (check for violations)
                 def.actions.forEach((action: any) => {
                     if (action.type === 'forbid') {
-                        // Check if forbidden state exists
                         if (action.componentId) {
-                            // Check if forbidden component is selected
                             if (action.slotIndex) {
                                 const slot = slots.find((s: any) => s.id === action.slotIndex);
                                 if (slot && slot.componentId === action.componentId) {
@@ -329,7 +405,6 @@ export const useConfigStore = create<ConfigState>((set) => ({
                                 if (slots.some((s: any) => s.componentId === action.componentId)) {
                                     violations.push(action.message || rule.description);
                                 }
-                                // Also check chassis/psu if componentId matches them
                                 if (chassisId === action.componentId) violations.push(action.message || rule.description);
                                 if (psuId === action.componentId) violations.push(action.message || rule.description);
                             }

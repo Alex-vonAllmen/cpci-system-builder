@@ -110,7 +110,7 @@ export function ChassisPage() {
     };
 
     // Helper to check if a product is forbidden
-    const isForbidden = (product: Product, type: 'chassis' | 'psu') => {
+    const isProhibited = (product: Product, type: 'chassis' | 'psu') => {
         const proposedState = {
             ...useConfigStore.getState(),
             chassisId: type === 'chassis' ? product.id : chassisId,
@@ -286,7 +286,7 @@ export function ChassisPage() {
                         </h2>
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                             {chassisOptions.map(chassis => {
-                                const forbidden = isForbidden(chassis, 'chassis');
+                                const forbidden = isProhibited(chassis, 'chassis');
                                 return (
                                     <div key={chassis.id} className={cn("relative", forbidden && "opacity-50 grayscale")}>
                                         <ComponentCard
@@ -296,8 +296,8 @@ export function ChassisPage() {
                                             selectedOptions={chassisId === chassis.id ? savedChassisOptions : undefined}
                                         />
                                         {forbidden && (
-                                            <div className="absolute inset-0 flex items-center justify-center bg-slate-100/50 cursor-not-allowed" title="Forbidden by configuration rules">
-                                                <span className="bg-red-100 text-red-800 text-xs font-bold px-2 py-1 rounded">Forbidden</span>
+                                            <div className="absolute inset-0 flex items-center justify-center bg-slate-100/50 cursor-not-allowed" title="Prohibited by configuration rules">
+                                                <span className="bg-red-100 text-red-800 text-xs font-bold px-2 py-1 rounded">Prohibited</span>
                                             </div>
                                         )}
                                     </div>
@@ -314,7 +314,7 @@ export function ChassisPage() {
                         </h2>
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                             {psuOptions.map(psu => {
-                                const forbidden = isForbidden(psu, 'psu');
+                                const forbidden = isProhibited(psu, 'psu');
                                 return (
                                     <div key={psu.id} className={cn("relative", forbidden && "opacity-50 grayscale")}>
                                         <ComponentCard
@@ -324,8 +324,8 @@ export function ChassisPage() {
                                             selectedOptions={psuId === psu.id ? savedPsuOptions : undefined}
                                         />
                                         {forbidden && (
-                                            <div className="absolute inset-0 flex items-center justify-center bg-slate-100/50 cursor-not-allowed" title="Forbidden by configuration rules">
-                                                <span className="bg-red-100 text-red-800 text-xs font-bold px-2 py-1 rounded">Forbidden</span>
+                                            <div className="absolute inset-0 flex items-center justify-center bg-slate-100/50 cursor-not-allowed" title="Prohibited by configuration rules">
+                                                <span className="bg-red-100 text-red-800 text-xs font-bold px-2 py-1 rounded">Prohibited</span>
                                             </div>
                                         )}
                                     </div>

@@ -1,6 +1,6 @@
 from fastapi import FastAPI
 from app.core.config import settings
-from app.api import admin, configurator
+from app.api import admin, configurator, examples
 from app.db.session import engine, Base
 
 # Create tables
@@ -21,6 +21,7 @@ app.add_middleware(
 
 app.include_router(admin.router, prefix="/api/admin", tags=["admin"])
 app.include_router(configurator.router, prefix="/api/config", tags=["configurator"])
+app.include_router(examples.router, prefix="/api/examples", tags=["examples"])
 
 @app.get("/")
 def read_root():

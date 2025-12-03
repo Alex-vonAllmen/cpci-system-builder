@@ -158,5 +158,33 @@ export const api = {
             if (!res.ok) throw new Error('Failed to request quote');
             return res.json();
         }
+    },
+    examples: {
+        list: async () => {
+            const res = await fetch(`${API_BASE_URL}/examples/`);
+            return res.json();
+        },
+        create: async (data: any) => {
+            const res = await fetch(`${API_BASE_URL}/examples/`, {
+                method: 'POST',
+                headers: getHeaders(),
+                body: JSON.stringify(data),
+            });
+            return res.json();
+        },
+        update: async (id: number, data: any) => {
+            const res = await fetch(`${API_BASE_URL}/examples/${id}`, {
+                method: 'PUT',
+                headers: getHeaders(),
+                body: JSON.stringify(data),
+            });
+            return res.json();
+        },
+        delete: async (id: number) => {
+            await fetch(`${API_BASE_URL}/examples/${id}`, {
+                method: 'DELETE',
+                headers: getHeaders(),
+            });
+        }
     }
 };
