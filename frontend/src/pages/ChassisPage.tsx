@@ -8,8 +8,11 @@ import { ArrowLeft, ArrowRight, Zap, Box, AlertCircle } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import type { Product } from '../data/mockProducts';
 
+import { useToast } from '../components/ui/Toast';
+
 export function ChassisPage() {
     const { slots, chassisId, psuId, setChassis, setPsu, products, fetchProducts, validateRules, chassisOptions: savedChassisOptions, psuOptions: savedPsuOptions } = useConfigStore();
+    const toast = useToast();
 
     useEffect(() => {
         if (products.length === 0) fetchProducts();
@@ -23,10 +26,14 @@ export function ChassisPage() {
     // Calculate total power consumption (including options)
     const totalPower = slots.reduce((total, slot) => {
         if (!slot.componentId) return total;
+        if (slot.blockedBy) return total; // Skip multi-slot duplicates
+        if (slot.type === 'psu') return total; // Skip PSU
+
         const product = products.find((p: any) => p.id === slot.componentId);
         if (!product) return total;
 
         let itemPower = product.powerWatts || 0;
+        if (itemPower < 0) return total; // Skip capacity providers
 
         // Add power from options
         if (product.options && slot.selectedOptions) {

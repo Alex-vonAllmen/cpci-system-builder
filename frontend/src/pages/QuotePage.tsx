@@ -55,8 +55,12 @@ export function QuotePage() {
 
     // PSU
     if (psuId) {
-        const p = products.find((p: any) => p.id === psuId);
-        if (p) selectedItems.push({ product: p, options: psuOptions || {}, slotLabel: 'PSU' });
+        // Only add as separate item if NOT in slots (i.e. not pluggable)
+        const isPluggable = slots.some(s => s.type === 'psu' && s.componentId === psuId);
+        if (!isPluggable) {
+            const p = products.find((p: any) => p.id === psuId);
+            if (p) selectedItems.push({ product: p, options: psuOptions || {}, slotLabel: 'PSU' });
+        }
     }
 
     // Slots (Components & Fillers)
@@ -66,13 +70,15 @@ export function QuotePage() {
     const sortedSlots = [...slots].sort((a, b) => a.id - b.id);
 
     sortedSlots.forEach(slot => {
+        if (slot.blockedBy) return; // Skip blocked slots (multi-slot components)
+
         if (slot.componentId) {
             const p = products.find((p: any) => p.id === slot.componentId);
             if (p) {
                 selectedItems.push({
                     product: p,
                     options: slot.selectedOptions || {},
-                    slotLabel: slot.id.toString()
+                    slotLabel: slot.type === 'psu' ? `Slot ${slot.id} (PSU)` : slot.id.toString()
                 });
             }
         } else if (slot.type === 'peripheral' && fillerProduct) {
@@ -88,6 +94,8 @@ export function QuotePage() {
     // Construct the backplane configuration based on slots
     const backplaneConnectors: Record<string, string[]> = {};
     sortedSlots.forEach(slot => {
+        if (slot.type === 'psu') return; // Skip PSU slots for backplane connectors
+
         let connectors: string[] = ['P1']; // Default mandatory for all slots
         if (slot.componentId) {
             const p = products.find((p: any) => p.id === slot.componentId);
@@ -202,6 +210,9 @@ export function QuotePage() {
 
     // Calculate Power
     const powerConsumption = selectedItems.reduce((sum, item) => {
+        // Skip PSU from consumption (it provides power)
+        if (item.product.type === 'psu') return sum;
+
         let watts = item.product.powerWatts || 0;
 
         // Add power from options

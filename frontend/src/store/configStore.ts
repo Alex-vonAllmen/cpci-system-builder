@@ -5,7 +5,7 @@ export type SystemSlotPosition = 'left' | 'right';
 
 export interface Slot {
     id: number;
-    type: 'system' | 'peripheral';
+    type: 'system' | 'peripheral' | 'psu';
     componentId: string | null;
     selectedOptions?: Record<string, any>;
     width: number; // Effective width in HP
@@ -223,7 +223,101 @@ export const useConfigStore = create<ConfigState>((set) => ({
     }),
 
     setChassis: (chassisId, options = {}) => set({ chassisId, chassisOptions: options }),
-    setPsu: (psuId, options = {}) => set({ psuId, psuOptions: options }),
+    setPsu: (psuId, options = {}) => set((state) => {
+        const { slots, products, slotCount } = state;
+        let newSlots = [...slots];
+
+        // 1. Remove existing pluggable PSU if any
+        // Check if any slot has type 'psu'
+        const existingPsuSlotIndex = newSlots.findIndex(s => s.type === 'psu');
+        if (existingPsuSlotIndex !== -1) {
+            // Find how many slots it occupied
+            const psuSlots = newSlots.filter(s => s.type === 'psu');
+            const shiftAmount = psuSlots.length;
+
+            // Remove PSU slots and shift everything left
+            // Actually, we just want to remove the 'psu' slots and pull everything back.
+            // The 'psu' slots are at the beginning (left).
+            // So we take the slots AFTER the psu slots, and move them to the beginning.
+            // Then we fill the end with empty peripheral slots.
+
+            const contentSlots = newSlots.slice(shiftAmount);
+            const emptySlots = Array.from({ length: shiftAmount }, (_, i) => ({
+                id: 0, // temp
+                type: 'peripheral' as const,
+                componentId: null,
+                width: 4,
+                blockedBy: null
+            }));
+
+            newSlots = [...contentSlots, ...emptySlots];
+            // Re-assign IDs and types
+            newSlots = newSlots.map((s, i) => ({
+                ...s,
+                id: i + 1,
+                type: (state.systemSlotPosition === 'left' && i === 0) || (state.systemSlotPosition === 'right' && i === slotCount - 1) ? 'system' : 'peripheral'
+            }));
+        }
+
+        // 2. If setting a new PSU
+        if (psuId) {
+            const psu = products.find(p => p.id === psuId);
+            // Check if pluggable (has width defined and maybe type 'psu', assuming all PSUs in list are 'psu' type)
+            // User said "only if it's a pluggable 3U PSU".
+            // We can check if width_hp > 0.
+            if (psu && psu.width_hp && psu.width_hp > 0) {
+                const slotsNeeded = Math.ceil(psu.width_hp / 4);
+
+                // Check if we can shift right
+                // We need 'slotsNeeded' empty slots at the end (or we push components out).
+                // User said: "it must be ensured that the shifting doesn't lead to components being shifted out".
+                // So we check the last 'slotsNeeded' slots. If they are occupied, we abort.
+                const lastSlots = newSlots.slice(-slotsNeeded);
+                const hasContent = lastSlots.some(s => s.componentId !== null);
+
+                if (hasContent) {
+                    console.warn("Cannot add PSU: Components would be pushed out of chassis.");
+                    // TODO: Notify user via toast or return error?
+                    // For now, we just don't apply the change.
+                    // But we might have already removed the old PSU! 
+                    // If we removed the old PSU, we should probably revert that?
+                    // Or maybe we treat "Change PSU" as atomic.
+                    // If we fail to add new one, we should probably keep the old one.
+                    // But here we already modified 'newSlots'.
+                    // So we should return 'state' (no change).
+                    return state;
+                }
+
+                // Shift right
+                // Take the first (N - slotsNeeded) slots
+                const shiftContent = newSlots.slice(0, slotCount - slotsNeeded);
+
+                // Create PSU slots
+                const psuSlots = Array.from({ length: slotsNeeded }, (_, i) => ({
+                    id: i + 1,
+                    type: 'psu' as const,
+                    componentId: psuId,
+                    width: i === 0 ? psu.width_hp : 4, // Set width on first slot?
+                    blockedBy: i === 0 ? null : 1, // Blocked by first slot
+                    selectedOptions: options
+                }));
+
+                // Combine
+                newSlots = [...psuSlots, ...shiftContent];
+
+                // Re-assign IDs
+                newSlots = newSlots.map((s, i) => ({
+                    ...s,
+                    id: i + 1,
+                    // blockedBy needs adjustment if we shifted?
+                    // If a component was blocked by slot X, it is now blocked by slot X + slotsNeeded.
+                    blockedBy: s.type === 'psu' ? (i === 0 ? null : 1) : (s.blockedBy ? s.blockedBy + slotsNeeded : null)
+                }));
+            }
+        }
+
+        return { psuId, psuOptions: options, slots: newSlots };
+    }),
 
     products: [],
     fetchProducts: async () => {
@@ -325,8 +419,12 @@ export const useConfigStore = create<ConfigState>((set) => ({
 
         let psuWidth = 0;
         if (psuId) {
-            const psu = products.find((p: any) => p.id === psuId);
-            if (psu) psuWidth = psu.width_hp || 0;
+            // Only add PSU width if it's NOT already in the slots (i.e. not pluggable/shifted)
+            const isPluggable = slots.some((s: any) => s.type === 'psu' && s.componentId === psuId);
+            if (!isPluggable) {
+                const psu = products.find((p: any) => p.id === psuId);
+                if (psu) psuWidth = psu.width_hp || 0;
+            }
         }
         usedWidth += psuWidth;
 

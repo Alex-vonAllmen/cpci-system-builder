@@ -141,11 +141,11 @@ Proprietary - duagon AG
 - Number of available PCIe lanes (e.g., two G506A with fat pipes)
 - Number of SATA lanes
 - Number of available USB ports
-- Instead of selecting slots at the beginning, you should select half- or full 19"-inch rack; information in centimeters instead of HP, U
 - Power dependant requirement for fan tray
 - Matching product options to article numbers
 - Improve PDF quote generation
-- Example configurations based on existings
+- Instead of selecting slots at the beginning, you should select half- or full 19"-inch rack; information in centimeters instead of HP, U - DONE
+- Example configurations based on existings - DONE
   - SBB Rack
   - OMTS Rack
   - SBB APFZ

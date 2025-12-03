@@ -228,7 +228,9 @@ export function ComponentsPage() {
                             <div className="grid grid-cols-5 gap-2">
                                 {slots.map(slot => {
                                     const isSlotBlocked = !!slot.blockedBy;
-                                    const isSlotDisabled = slot.id > availableSlotCount;
+                                    const isPsuSlot = slot.type === 'psu';
+                                    // Disable if blocked or PSU
+                                    const isSlotDisabled = isPsuSlot;
 
                                     return (
                                         <button
@@ -239,18 +241,18 @@ export function ComponentsPage() {
                                                 "h-10 rounded-lg text-sm font-bold transition-all border-2 relative",
                                                 selectedSlotId === slot.id
                                                     ? "border-duagon-blue bg-blue-50 text-duagon-blue"
-                                                    : slot.componentId
+                                                    : slot.componentId && !isPsuSlot
                                                         ? "border-green-200 bg-green-50 text-green-700"
                                                         : isSlotBlocked
                                                             ? "border-slate-200 bg-slate-100 text-slate-400 cursor-not-allowed"
-                                                            : isSlotDisabled
-                                                                ? "border-slate-100 bg-slate-100 text-slate-300 cursor-not-allowed"
+                                                            : isPsuSlot
+                                                                ? "border-orange-200 bg-orange-50 text-orange-600 cursor-not-allowed"
                                                                 : "border-slate-200 hover:border-slate-300 text-slate-600"
                                             )}
                                         >
                                             {slot.id}
                                             {isSlotBlocked && <span className="absolute inset-0 flex items-center justify-center text-xs opacity-50">Link</span>}
-                                            {isSlotDisabled && <span className="absolute inset-0 flex items-center justify-center text-xs">PSU</span>}
+                                            {isPsuSlot && <span className="absolute inset-0 flex items-center justify-center text-xs font-bold">PSU</span>}
                                         </button>
                                     );
                                 })}
@@ -272,8 +274,8 @@ export function ComponentsPage() {
                         <p className="text-sm text-slate-500">
                             {isBlocked
                                 ? `This slot is blocked by the component in slot ${currentSlot?.blockedBy}.`
-                                : selectedSlotId && selectedSlotId > availableSlotCount
-                                    ? "This slot is occupied by the PSU."
+                                : currentSlot?.type === 'psu'
+                                    ? "This slot is occupied by the Pluggable PSU."
                                     : isSystemSlot
                                         ? "Select a CPU board for the system controller."
                                         : "Select a peripheral card (Storage, Network, I/O)."

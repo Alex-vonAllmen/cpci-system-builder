@@ -36,6 +36,7 @@ export function BackplaneVisualizer() {
                     const x = PADDING + (index * (SLOT_WIDTH + GAP));
                     const y = PADDING;
                     const isSystem = slot.type === 'system';
+                    const isPsu = slot.type === 'psu';
 
                     return (
                         <g key={slot.id} transform={`translate(${x}, ${y})`}>
@@ -43,11 +44,11 @@ export function BackplaneVisualizer() {
                             <rect
                                 width={SLOT_WIDTH}
                                 height={SLOT_HEIGHT}
-                                fill={isSystem ? "#ef4444" : "#3b82f6"}
+                                fill={isSystem ? "#ef4444" : isPsu ? "#f97316" : "#3b82f6"}
                                 rx={2}
                                 className={cn(
                                     "transition-colors duration-300",
-                                    isSystem ? "fill-red-500" : "fill-blue-500"
+                                    isSystem ? "fill-red-500" : isPsu ? "fill-orange-500" : "fill-blue-500"
                                 )}
                             />
 
@@ -68,12 +69,12 @@ export function BackplaneVisualizer() {
                                 x={SLOT_WIDTH / 2}
                                 y={-10}
                                 textAnchor="middle"
-                                fill={isSystem ? "#fca5a5" : "#93c5fd"}
+                                fill={isSystem ? "#fca5a5" : isPsu ? "#fdba74" : "#93c5fd"}
                                 fontSize="10"
                                 fontFamily="sans-serif"
                                 fontWeight="bold"
                             >
-                                {isSystem ? "SYS" : "PER"}
+                                {isSystem ? "SYS" : isPsu ? "PSU" : "PER"}
                             </text>
 
                             {/* Connector Pins (Visual Detail) */}
