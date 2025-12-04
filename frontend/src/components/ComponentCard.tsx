@@ -61,6 +61,38 @@ export function ComponentCard({ product, isSelected, onSelect, onViewDetails, di
             <h3 className="font-bold text-slate-900 mb-1">{product.name}</h3>
             <p className="text-sm text-slate-500 mb-4 line-clamp-2">{product.description}</p>
 
+            {/* Selected Options Display */}
+            {product.options && selectedOptions && (
+                <div className="mb-4 space-y-1">
+                    {Object.entries(selectedOptions).map(([optId, optVal]) => {
+                        const optDef = (product.options as any[]).find((o: any) => o.id === optId);
+                        if (!optDef) return null;
+
+                        // Only show if value is truthy (for boolean) or selected (for select)
+                        // And skip if it's the default value? User asked to "Show selected options".
+                        // Usually "selected" implies non-default or explicit choice.
+                        // But for now, let's show everything that is "truthy" or a specific selection.
+
+                        if (optDef.type === 'boolean' && !optVal) return null;
+                        if (optDef.type === 'select' && !optVal) return null;
+
+                        let displayValue = '';
+                        if (optDef.type === 'boolean') {
+                            displayValue = 'Enabled';
+                        } else {
+                            const choice = optDef.choices.find((c: any) => c.value === optVal);
+                            displayValue = choice ? choice.label : optVal;
+                        }
+
+                        return (
+                            <div key={optId} className="text-xs text-slate-600 bg-slate-100 px-2 py-1 rounded inline-block mr-1 mb-1 border border-slate-200">
+                                <span className="font-semibold">{optDef.label}:</span> {displayValue}
+                            </div>
+                        );
+                    })}
+                </div>
+            )}
+
             <div className="mt-auto border-t border-slate-100 pt-3 flex items-center justify-between text-xs text-slate-500">
                 <div className="flex gap-3">
                     <span className={cn(totalWidth !== product.widthHp && "font-bold text-duagon-blue")}>

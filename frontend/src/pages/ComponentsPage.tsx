@@ -41,9 +41,7 @@ export function ComponentsPage() {
     // If PSU is pluggable (width > 0), it consumes slots from the RIGHT?
     // Let's assume it consumes slots from the end.
 
-    const psuSlots = psu && psu.width_hp > 0 ? Math.ceil(psu.width_hp / 4) : 0;
     const totalSlots = slots.length;
-    const availableSlotCount = totalSlots - psuSlots;
 
     // Filter products based on slot type and category
     const availableProducts = products.filter((p: Product) => {
@@ -378,14 +376,14 @@ export function ComponentsPage() {
 
                     </div>
 
-                    {(isBlocked || (selectedSlotId && selectedSlotId > availableSlotCount)) && (
+                    {(isBlocked) && (
                         <div className="flex flex-col items-center justify-center h-64 text-slate-400">
                             <AlertCircle size={48} className="mb-4 opacity-50" />
-                            <p>{isBlocked ? "Slot Blocked" : "Slot Occupied by PSU"}</p>
+                            <p>Slot Blocked</p>
                         </div>
                     )}
 
-                    {availableProducts.length === 0 && !isBlocked && !(selectedSlotId && selectedSlotId > availableSlotCount) && (
+                    {availableProducts.length === 0 && !isBlocked && (
                         <div className="flex flex-col items-center justify-center h-64 text-slate-400">
                             <AlertCircle size={48} className="mb-4 opacity-50" />
                             <p>No compatible components found for this slot.</p>
