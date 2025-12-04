@@ -4,6 +4,7 @@ import { cn } from '../lib/utils';
 
 import { ComponentCard } from '../components/ComponentCard';
 import { SubConfigModal } from '../components/SubConfigModal';
+import { ProductDetailsModal } from '../components/ProductDetailsModal';
 import { ArrowLeft, ArrowRight, Zap, Box, AlertCircle } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import type { Product } from '../data/mockProducts';
@@ -20,6 +21,7 @@ export function ChassisPage() {
 
     // Modal State
     const [configuringProduct, setConfiguringProduct] = useState<Product | null>(null);
+    const [viewingProduct, setViewingProduct] = useState<Product | null>(null);
     const [tempOptions, setTempOptions] = useState<Record<string, any>>({});
 
     // Calculate total power consumption
@@ -87,19 +89,19 @@ export function ChassisPage() {
             return;
         }
 
-        // Check for rule violations
+        // Check for rule violations with DEFAULT options
         const proposedState = {
             ...useConfigStore.getState(),
             chassisId: type === 'chassis' ? product.id : chassisId,
-            psuId: type === 'psu' ? product.id : psuId
+            psuId: type === 'psu' ? product.id : psuId,
+            chassisOptions: type === 'chassis' ? {} : useConfigStore.getState().chassisOptions,
+            psuOptions: type === 'psu' ? {} : useConfigStore.getState().psuOptions
         };
 
         const violations = validateRules(proposedState);
-        if (violations.length > 0) {
-            toast.error(`Cannot select this component:\n\n${violations.join('\n')}`);
-            return;
-        }
 
+        // If product has options, we allow opening the modal even if defaults are invalid
+        // The user might be able to fix it by changing options (e.g. enabling Fan Tray)
         if (product.options && product.options.length > 0) {
             // Open modal for configuration
             setConfiguringProduct(product);
@@ -110,7 +112,11 @@ export function ChassisPage() {
             });
             setTempOptions(defaults);
         } else {
-            // Direct selection
+            // Direct selection - strict validation
+            if (violations.length > 0) {
+                toast.error(`Cannot select this component:\n\n${violations.join('\n')}`);
+                return;
+            }
             if (type === 'chassis') setChassis(product.id);
             else setPsu(product.id);
         }
@@ -128,6 +134,21 @@ export function ChassisPage() {
 
     const handleSaveConfiguration = (options: any) => {
         if (configuringProduct) {
+            // Validate with SELECTED options
+            const proposedState = {
+                ...useConfigStore.getState(),
+                chassisId: configuringProduct.type === 'chassis' ? configuringProduct.id : chassisId,
+                psuId: configuringProduct.type === 'psu' ? configuringProduct.id : psuId,
+                chassisOptions: configuringProduct.type === 'chassis' ? options : useConfigStore.getState().chassisOptions,
+                psuOptions: configuringProduct.type === 'psu' ? options : useConfigStore.getState().psuOptions
+            };
+
+            const violations = validateRules(proposedState);
+            if (violations.length > 0) {
+                toast.error(`Cannot save configuration:\n\n${violations.join('\n')}`);
+                return;
+            }
+
             if (configuringProduct.type === 'chassis') {
                 setChassis(configuringProduct.id, options);
             } else if (configuringProduct.type === 'psu') {
@@ -139,6 +160,13 @@ export function ChassisPage() {
 
     return (
         <div className="space-y-8">
+            {/* Product Details Modal */}
+            <ProductDetailsModal
+                isOpen={!!viewingProduct}
+                onClose={() => setViewingProduct(null)}
+                product={viewingProduct}
+            />
+
             {/* Sub-Configuration Modal */}
             <SubConfigModal
                 isOpen={!!configuringProduct}
@@ -255,6 +283,16 @@ export function ChassisPage() {
                             </div>
                         </div>
 
+                        {/* Fan Tray Warning */}
+                        {requiredPower > 120 && (
+                            <div className="mt-4 p-3 bg-amber-50 border border-amber-200 rounded-lg text-sm text-amber-800 font-medium flex items-start gap-2">
+                                <AlertCircle size={16} className="mt-0.5 shrink-0" />
+                                <div>
+                                    System power exceeds 120W. A Fan Tray is required.
+                                </div>
+                            </div>
+                        )}
+
                         {/* PSU Validation Warning */}
                         {psuId && (
                             (() => {
@@ -294,17 +332,50 @@ export function ChassisPage() {
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                             {chassisOptions.map(chassis => {
                                 const forbidden = isProhibited(chassis, 'chassis');
+                                let status: 'allowed' | 'prohibited' | 'config_required' = forbidden ? 'prohibited' : 'allowed';
+
+                                if (forbidden && chassis.options && chassis.options.length > 0) {
+                                    // Check if it can be fixed by enabling options (e.g. Fan Tray)
+                                    // We try to find a valid configuration by enabling boolean options that are currently false
+                                    const proposedOptions: Record<string, any> = {};
+                                    chassis.options.forEach((opt: any) => {
+                                        if (opt.type === 'boolean') {
+                                            proposedOptions[opt.id] = true;
+                                        } else if (opt.type === 'select') {
+                                            // Try first option? Or just keep default?
+                                            // For now, just trying to enable booleans (like fan_tray) is a good heuristic
+                                            proposedOptions[opt.id] = opt.default;
+                                        }
+                                    });
+
+                                    const proposedState = {
+                                        ...useConfigStore.getState(),
+                                        chassisId: chassis.id,
+                                        chassisOptions: proposedOptions
+                                    };
+
+                                    if (validateRules(proposedState).length === 0) {
+                                        status = 'config_required';
+                                    }
+                                }
+
                                 return (
-                                    <div key={chassis.id} className={cn("relative", forbidden && "opacity-50 grayscale")}>
+                                    <div key={chassis.id} className={cn("relative", status === 'prohibited' && "opacity-50 grayscale")}>
                                         <ComponentCard
                                             product={chassis}
                                             isSelected={chassisId === chassis.id}
-                                            onSelect={() => !forbidden && handleSelectProduct(chassis, 'chassis')}
+                                            onSelect={() => handleSelectProduct(chassis, 'chassis')}
+                                            onViewDetails={() => setViewingProduct(chassis)}
                                             selectedOptions={chassisId === chassis.id ? savedChassisOptions : undefined}
                                         />
-                                        {forbidden && (
-                                            <div className="absolute inset-0 flex items-center justify-center bg-slate-100/50 cursor-not-allowed" title="Prohibited by configuration rules">
+                                        {status === 'prohibited' && (
+                                            <div className="absolute inset-0 flex items-center justify-center bg-slate-100/50 pointer-events-none" title="Prohibited by configuration rules">
                                                 <span className="bg-red-100 text-red-800 text-xs font-bold px-2 py-1 rounded">Prohibited</span>
+                                            </div>
+                                        )}
+                                        {status === 'config_required' && (
+                                            <div className="absolute inset-0 flex items-center justify-center bg-blue-50/30 pointer-events-none" title="Configuration required (e.g. Fan Tray)">
+                                                <span className="bg-blue-100 text-blue-800 text-xs font-bold px-2 py-1 rounded shadow-sm border border-blue-200">Configuration Required</span>
                                             </div>
                                         )}
                                     </div>
@@ -327,11 +398,12 @@ export function ChassisPage() {
                                         <ComponentCard
                                             product={psu}
                                             isSelected={psuId === psu.id}
-                                            onSelect={() => !forbidden && handleSelectProduct(psu, 'psu')}
+                                            onSelect={() => handleSelectProduct(psu, 'psu')}
+                                            onViewDetails={() => setViewingProduct(psu)}
                                             selectedOptions={psuId === psu.id ? savedPsuOptions : undefined}
                                         />
                                         {forbidden && (
-                                            <div className="absolute inset-0 flex items-center justify-center bg-slate-100/50 cursor-not-allowed" title="Prohibited by configuration rules">
+                                            <div className="absolute inset-0 flex items-center justify-center bg-slate-100/50 pointer-events-none" title="Prohibited by configuration rules">
                                                 <span className="bg-red-100 text-red-800 text-xs font-bold px-2 py-1 rounded">Prohibited</span>
                                             </div>
                                         )}

@@ -11,6 +11,7 @@ A modern, web-based configurator for CompactPCI (cPCI) systems. This application
     *   **Products**: Create, edit, and delete components.
     *   **Rules**: Define flexible JSON-based compatibility rules.
     *   **Settings**: Configure system-wide settings like the central quote email.
+*   **Internal Interfaces Management**: Track and validate internal interface usage (PCIe, SATA, USB, etc.) to ensure CPU capacity is not exceeded.
 *   **Quote Generation**: Generate PDF quotes with detailed configuration summaries.
 *   **Modern UI**: Built with React, Tailwind CSS, and Shadcn UI for a polished user experience.
 *   **Toast Notifications**: Non-intrusive feedback for user actions and errors.
@@ -110,23 +111,23 @@ Product options (e.g., RAM, Storage size) are defined as a JSON array in the Pro
 ```
 
 ### Rules
-Rules are defined in the Admin > Rules tab using a flexible JSON format:
+Rules are defined in the Admin > Rules tab using a flexible JSON format. Supported condition types include `component_selected`, `system_property`, and `adjacency`.
 
+Example Adjacency Rule:
 ```json
 {
   "conditions": [
     {
-      "type": "component_present",
-      "slot_id": 1,
-      "product_id": "G28"
+      "type": "adjacency",
+      "componentId": "G239",
+      "adjacentTo": "system_slot"
     }
   ],
   "actions": [
     {
-      "type": "forbid_component",
-      "slot_id": 2,
-      "product_id": "G239",
-      "message": "G239 cannot be placed in Slot 2 when G28 is in Slot 1."
+      "type": "forbid",
+      "componentId": "G239",
+      "message": "G239 cannot be placed in the slot adjacent to the System Slot."
     }
   ]
 }
@@ -140,7 +141,7 @@ Proprietary - duagon AG
 
 
 - Add external interfaces available (e.g., 2x USB 3.2 Gen 2)
-- Power dependant requirement for fan tray
+- Power dependant requirement for fan tray - DONE
 - Matching product options to article numbers
 - Improve PDF quote generation
 - Instead of selecting slots at the beginning, you should select half- or full 19"-inch rack; information in centimeters instead of HP, U - DONE
@@ -154,4 +155,3 @@ Proprietary - duagon AG
 
 ## Issues
 - PDF quote only contains single prices
-- Rule with G239 in slot 2 does not work if G28 is in slot 1 and extends to slot 2

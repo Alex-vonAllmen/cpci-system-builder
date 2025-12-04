@@ -34,7 +34,7 @@ interface ConfigState {
     examples: any[];
     fetchExamples: () => Promise<void>;
     importConfig: (config: any) => void;
-    validateRules: (state: any) => string[];
+    validateRules: (state?: any, options?: { ignoreCategories?: string[] }) => string[];
     getRemainingInterfaces: (state: any) => Record<string, number>;
 }
 
@@ -414,19 +414,15 @@ export const useConfigStore = create<ConfigState>((set) => ({
                 }
             }
         });
-
         return remaining;
     },
 
-    validateRules: (proposedState) => {
-        const { rules, slots, chassisId, psuId, slotCount, products } = proposedState;
+    validateRules: (proposedState?: ConfigState, options?: { ignoreCategories?: string[] }) => {
+        const state = proposedState || get();
+        const { slots, products, chassisId, psuId, rules, slotCount } = state;
         const violations: string[] = [];
 
         // --- Interface Validation ---
-        // We can reuse the logic from getRemainingInterfaces but we need to run it on proposedState
-        // Since getRemainingInterfaces is a store function, we can't call it easily on a plain object unless we extract the logic.
-        // Let's inline the logic or extract a helper outside the store.
-
         const remaining: Record<string, number> = {};
         const systemSlot = slots.find((s: any) => s.type === 'system');
         if (systemSlot && systemSlot.componentId) {
@@ -461,7 +457,37 @@ export const useConfigStore = create<ConfigState>((set) => ({
         // Calculate Widths
         const backplaneWidth = slotCount * 4; // Total capacity of the backplane
 
-        // ... (rest of existing validation logic)
+        // Calculate Total Power
+        let totalPower = 0;
+        slots.forEach((slot: any) => {
+            if (!slot.componentId) return;
+            if (slot.blockedBy) return;
+            if (slot.type === 'psu') return;
+
+            const product = products.find((p: any) => p.id === slot.componentId);
+            if (!product) return;
+
+            let itemPower = product.powerWatts || 0;
+            if (itemPower < 0) return;
+
+            if (product.options && slot.selectedOptions) {
+                Object.entries(slot.selectedOptions).forEach(([optId, optVal]) => {
+                    const optDef = (product.options as any[]).find((o: any) => o.id === optId);
+                    if (optDef) {
+                        if (optDef.type === 'select') {
+                            const choice = optDef.choices.find((c: any) => c.value === optVal);
+                            if (choice && choice.powerMod) itemPower += choice.powerMod;
+                        } else if (optDef.type === 'boolean' && optVal === true) {
+                            if (optDef.powerMod) itemPower += optDef.powerMod;
+                        }
+                    }
+                });
+            }
+            totalPower += itemPower;
+        });
+
+        // Calculate Required Power (Total + 20% buffer)
+        const requiredPower = Math.ceil(totalPower * 1.2);
 
         // Calculate Used Width (Components + PSU)
         let usedWidth = 0;
@@ -519,8 +545,6 @@ export const useConfigStore = create<ConfigState>((set) => ({
                 }
 
                 // Check if used width fits in backplane (and thus chassis)
-                // Actually, used width must fit in the available slots.
-                // But simplified: Used Width <= Backplane Width
                 if (usedWidth > backplaneWidth) {
                     violations.push(`Total used width (${usedWidth}HP) exceeds backplane capacity (${backplaneWidth}HP).`);
                 }
@@ -531,6 +555,11 @@ export const useConfigStore = create<ConfigState>((set) => ({
         const totalWidth = usedWidth;
 
         rules.forEach((rule: any) => {
+            // Check category ignore
+            if (options?.ignoreCategories && rule.category && options.ignoreCategories.includes(rule.category)) {
+                return;
+            }
+
             const def = rule.definition;
             if (!def || !def.conditions || !def.actions) return;
 
@@ -554,9 +583,59 @@ export const useConfigStore = create<ConfigState>((set) => ({
                         if (cond.operator === 'lt') return totalWidth < cond.value;
                         if (cond.operator === 'eq') return totalWidth === cond.value;
                     }
+                    if (cond.property === 'totalPower') {
+                        if (cond.operator === 'gt') return totalPower > cond.value;
+                        if (cond.operator === 'lt') return totalPower < cond.value;
+                        if (cond.operator === 'eq') return totalPower === cond.value;
+                    }
+                    if (cond.property === 'requiredPower') {
+                        if (cond.operator === 'gt') return requiredPower > cond.value;
+                        if (cond.operator === 'lt') return requiredPower < cond.value;
+                        if (cond.operator === 'eq') return requiredPower === cond.value;
+                    }
                     if (cond.property === 'chassisId') {
                         if (cond.operator === 'eq') return chassisId === cond.value;
                         if (cond.operator === 'contains' && chassisId) return chassisId.includes(cond.value);
+                    }
+                }
+                else if (cond.type === 'adjacency') {
+                    const targetComponentId = cond.componentId;
+                    const adjacentTo = cond.adjacentTo; // 'system_slot' or componentId
+
+                    // Find slots with the target component
+                    const targetSlots = slots.filter((s: any) => s.componentId === targetComponentId);
+
+                    if (targetSlots.length === 0) return false;
+
+                    return targetSlots.some((slot: any) => {
+                        const slotIndex = slots.indexOf(slot); // 0-based index in the array
+
+                        // Check neighbors
+                        const neighbors = [];
+                        if (slotIndex > 0) neighbors.push(slots[slotIndex - 1]);
+                        if (slotIndex < slots.length - 1) neighbors.push(slots[slotIndex + 1]);
+
+                        if (adjacentTo === 'system_slot') {
+                            return neighbors.some((n: any) => n.type === 'system');
+                        } else {
+                            // Check if neighbor has the specific component ID
+                            return neighbors.some((n: any) => n.componentId === adjacentTo);
+                        }
+                    });
+                }
+                else if (cond.type === 'option_not_selected') {
+                    // Check if a specific option is NOT selected (or not matching value)
+                    // Currently only supporting chassis options as that's the use case
+                    if (cond.componentType === 'chassis') {
+                        if (!chassisId) return false; // If no chassis selected, we don't enforce "option not selected" to avoid blocking component addition
+
+                        const val = state.chassisOptions[cond.optionId];
+                        // If cond.value is true, we check if val is NOT true (i.e. false or undefined)
+                        if (cond.value === true) {
+                            return !val;
+                        }
+                        // Generic check
+                        return val !== cond.value;
                     }
                 }
                 return false;
@@ -578,6 +657,9 @@ export const useConfigStore = create<ConfigState>((set) => ({
                                 if (chassisId === action.componentId) violations.push(action.message || rule.description);
                                 if (psuId === action.componentId) violations.push(action.message || rule.description);
                             }
+                        } else {
+                            // Generic forbid (no specific component ID, just forbid the state)
+                            violations.push(action.message || rule.description);
                         }
                     }
                 });

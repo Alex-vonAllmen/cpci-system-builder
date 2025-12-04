@@ -464,6 +464,33 @@ def seed():
                     { "type": "forbid", "componentId": "C_3U_84HP", "message": "3U Rack Mount Chassis (84HP) cannot support current configuration width." }
                 ]
             }
+        },
+        {
+            "description": "G239 not allowed adjacent to System Slot",
+            "definition": {
+                "conditions": [
+                    {
+                        "type": "adjacency",
+                        "componentId": "G239",
+                        "adjacentTo": "system_slot"
+                    }
+                ],
+                "actions": [
+                ]
+            }
+        },
+        {
+            "description": "Fan Tray required for > 120W",
+            "category": "chassis_compliance",
+            "definition": {
+                "conditions": [
+                    { "type": "system_property", "property": "requiredPower", "operator": "gt", "value": 120 },
+                    { "type": "option_not_selected", "componentType": "chassis", "optionId": "fan_tray", "value": True }
+                ],
+                "actions": [
+                    { "type": "forbid", "message": "System power exceeds 120W. You must select a chassis with a Fan Tray enabled." }
+                ]
+            }
         }
     ]
 

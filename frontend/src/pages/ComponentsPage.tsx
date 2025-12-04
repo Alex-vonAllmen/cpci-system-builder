@@ -71,7 +71,8 @@ export function ComponentsPage() {
             ...useConfigStore.getState(),
             slots: slots.map(s => s.id === currentSlot.id ? { ...s, componentId: product.id } : s)
         };
-        return validateRules(proposedState).length > 0;
+        // Ignore chassis compliance rules (like Fan Tray) during component selection
+        return validateRules(proposedState, { ignoreCategories: ['chassis_compliance'] }).length > 0;
     };
 
     const handleSelectProduct = (product: Product) => {
@@ -91,7 +92,8 @@ export function ComponentsPage() {
                 ...useConfigStore.getState(),
                 slots: slots.map(s => s.id === currentSlot?.id ? { ...s, componentId: product.id } : s)
             };
-            const violations = validateRules(proposedState);
+            // Ignore chassis compliance rules (like Fan Tray) during component selection
+            const violations = validateRules(proposedState, { ignoreCategories: ['chassis_compliance'] });
             toast.error(`Cannot select this component:\n- ${violations.join('\n- ')}`);
             return;
         }
