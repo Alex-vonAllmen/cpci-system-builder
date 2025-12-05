@@ -12,19 +12,33 @@ import { cn } from '../lib/utils';
 import { useToast } from '../components/ui/Toast';
 
 export function ComponentsPage() {
-    const { slots, setSlotComponent, setSlotOptions, products, fetchProducts, validateRules, psuId, getRemainingInterfaces } = useConfigStore();
-    const [selectedSlotId, setSelectedSlotId] = useState<number | null>(1);
+    const { slots, setSlotComponent, setSlotOptions, products, fetchProducts, validateRules, getRemainingInterfaces } = useConfigStore();
+    const [selectedSlotId, setSelectedSlotId] = useState<number | null>(() => {
+        // Initialize with first valid non-PSU slot
+        const state = useConfigStore.getState();
+        const firstValid = state.slots.find(s => s.type !== 'psu' && !s.blockedBy);
+        return firstValid ? firstValid.id : 1;
+    });
     const [categoryFilter, setCategoryFilter] = useState<string>('All');
     const toast = useToast();
 
     useEffect(() => {
+        // Ensure we don't start with a blocked slot if state changed
+        if (selectedSlotId) {
+            const slot = slots.find(s => s.id === selectedSlotId);
+            if (slot && (slot.type === 'psu' || slot.blockedBy)) {
+                const firstValid = slots.find(s => s.type !== 'psu' && !s.blockedBy);
+                if (firstValid) setSelectedSlotId(firstValid.id);
+            }
+        }
         fetchProducts();
-    }, []);
+    }, [fetchProducts, slots, selectedSlotId]);
 
     // Modal State
     const [configuringProduct, setConfiguringProduct] = useState<Product | null>(null);
     const [viewingProduct, setViewingProduct] = useState<Product | null>(null);
     const [tempOptions, setTempOptions] = useState<Record<string, any>>({});
+    const [isEditingExisting, setIsEditingExisting] = useState(false);
 
     const currentSlot = slots.find(s => s.id === selectedSlotId);
     const isSystemSlot = currentSlot?.type === 'system';
@@ -32,22 +46,13 @@ export function ComponentsPage() {
 
     // Calculate available slots based on Chassis and PSU
     // const chassis = products.find(p => p.id === chassisId); // Unused
-    const psu = products.find(p => p.id === psuId);
-
-    // Default to 9 slots if not set
-    // If PSU takes space (width_hp > 0), reduce slots.
-    // Assuming standard 84HP rack = 21 slots (but we usually have 9-slot backplanes).
-    // Let's stick to the "Slot Count" logic.
-    // If PSU is pluggable (width > 0), it consumes slots from the RIGHT?
-    // Let's assume it consumes slots from the end.
-
-    const totalSlots = slots.length;
 
     // Filter products based on slot type and category
     const availableProducts = products.filter((p: Product) => {
         // 1. System Slot Check
         if (isSystemSlot) return p.type === 'cpu';
         if (p.type === 'cpu') return false; // CPUs only in system slot
+        if (currentSlot?.type === 'psu') return false; // Fail-safe: no products for PSU slots
 
         // 2. Category Filter
         if (['chassis', 'psu'].includes(p.type)) return false;
@@ -75,12 +80,16 @@ export function ComponentsPage() {
 
     const handleSelectProduct = (product: Product) => {
         if (selectedSlotId === null) return;
+        if (currentSlot?.type === 'psu') return; // Double check
 
         const isAlreadySelected = currentSlot?.componentId === product.id;
 
         if (isAlreadySelected) {
-            // Unselect
-            setSlotComponent(selectedSlotId, null);
+            // Edit existing component
+            setConfiguringProduct(product);
+            setIsEditingExisting(true);
+            // Initialize with CURRENT options
+            setTempOptions(currentSlot?.selectedOptions || {});
             return;
         }
 
@@ -97,8 +106,9 @@ export function ComponentsPage() {
         }
 
         if (product.options && product.options.length > 0) {
-            // Open modal for configuration
+            // Open modal for configuration (New selection)
             setConfiguringProduct(product);
+            setIsEditingExisting(false);
             // Initialize default options
             const defaults: Record<string, any> = {};
             product.options.forEach(opt => {
@@ -128,6 +138,10 @@ export function ComponentsPage() {
                 isOpen={!!configuringProduct}
                 onClose={() => setConfiguringProduct(null)}
                 onSave={() => handleSaveConfiguration(tempOptions)}
+                onRemove={isEditingExisting ? () => {
+                    if (selectedSlotId) setSlotComponent(selectedSlotId, null);
+                    setConfiguringProduct(null);
+                } : undefined}
                 title={`Configure ${configuringProduct?.name}`}
             >
                 <div className="space-y-6">

@@ -4,6 +4,7 @@ export interface ProductOption {
     type: 'select' | 'boolean';
     choices?: { label: string; value: string; priceMod?: number }[];
     priceMod?: number; // For boolean options
+    externalInterfacesMod?: { type: string; connector: string; count: number }[];
     default?: any;
 }
 
@@ -22,6 +23,7 @@ export interface Product {
     connectors?: string[];
     options?: ProductOption[];
     interfaces?: Record<string, number>;
+    externalInterfaces?: { type: string; connector: string; count: number }[];
 }
 
 export const MOCK_PRODUCTS: Product[] = [

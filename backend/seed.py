@@ -33,6 +33,11 @@ products = [
             "eth_1g": 2,
             "gpio": 16
         },
+        "external_interfaces": [
+            { "type": "Ethernet", "connector": "RJ45", "count": 2 },
+            { "type": "USB", "connector": "Type-A", "count": 2 },
+            { "type": "Display", "connector": "DisplayPort", "count": 1 }
+        ],
         "options": [
             {
                 "id": "ram",
@@ -79,6 +84,10 @@ products = [
             "eth_1g": 2,
             "gpio": 16
         },
+        "external_interfaces": [
+            { "type": "Ethernet", "connector": "RJ45", "count": 2 },
+            { "type": "Display", "connector": "DisplayPort", "count": 2 }
+        ],
     },
     {
         "id": "G029M",
@@ -167,8 +176,24 @@ products = [
                 "type": "select",
                 "choices": [
                     { "label": "Empty", "value": "none", "priceMod": 0, "powerMod": 0 },
-                    { "label": "5G Modem (Sub-6GHz)", "value": "modem_5g_sub6", "priceMod": { "1": 250, "25": 240, "50": 230, "100": 220, "250": 210, "500": 200 }, "powerMod": 10 },
-                    { "label": "4G/LTE Modem", "value": "modem_4g", "priceMod": { "1": 150, "25": 145, "50": 140, "100": 135, "250": 130, "500": 125 }, "powerMod": 5 },
+                    { 
+                        "label": "5G Modem (Sub-6GHz)", 
+                        "value": "modem_5g_sub6", 
+                        "priceMod": { "1": 250, "25": 240, "50": 230, "100": 220, "250": 210, "500": 200 }, 
+                        "powerMod": 10,
+                        "externalInterfacesMod": [
+                            { "type": "Antenna", "connector": "SMA", "count": 2 }
+                        ]
+                    },
+                    { 
+                        "label": "4G/LTE Modem", 
+                        "value": "modem_4g", 
+                        "priceMod": { "1": 150, "25": 145, "50": 140, "100": 135, "250": 130, "500": 125 }, 
+                        "powerMod": 5,
+                        "externalInterfacesMod": [
+                            { "type": "Antenna", "connector": "SMA", "count": 2 }
+                        ]
+                    },
                 ],
                 "default": "none"
             },
@@ -178,8 +203,24 @@ products = [
                 "type": "select",
                 "choices": [
                     { "label": "Empty", "value": "none", "priceMod": 0, "powerMod": 0 },
-                    { "label": "5G Modem (Sub-6GHz)", "value": "modem_5g_sub6", "priceMod": { "1": 250, "25": 240, "50": 230, "100": 220, "250": 210, "500": 200 }, "powerMod": 10 },
-                    { "label": "4G/LTE Modem", "value": "modem_4g", "priceMod": { "1": 150, "25": 145, "50": 140, "100": 135, "250": 130, "500": 125 }, "powerMod": 5 },
+                    { 
+                        "label": "5G Modem (Sub-6GHz)", 
+                        "value": "modem_5g_sub6", 
+                        "priceMod": { "1": 250, "25": 240, "50": 230, "100": 220, "250": 210, "500": 200 }, 
+                        "powerMod": 10,
+                        "externalInterfacesMod": [
+                            { "type": "Antenna", "connector": "SMA", "count": 2 }
+                        ]
+                    },
+                    { 
+                        "label": "4G/LTE Modem", 
+                        "value": "modem_4g", 
+                        "priceMod": { "1": 150, "25": 145, "50": 140, "100": 135, "250": 130, "500": 125 }, 
+                        "powerMod": 5,
+                        "externalInterfacesMod": [
+                            { "type": "Antenna", "connector": "SMA", "count": 2 }
+                        ] 
+                    },
                 ],
                 "default": "none"
             }
@@ -219,6 +260,9 @@ products = [
         "interfaces": {
             "pcie_x1": 1
         },
+        "external_interfaces": [
+            { "type": "Ethernet", "connector": "RJ45", "count": 4 }
+        ],
         "options": []
     },
     {
@@ -237,6 +281,9 @@ products = [
         "interfaces": {
             "pcie_x1": 1
         },
+        "external_interfaces": [
+            { "type": "Serial", "connector": "D-Sub", "count": 8 }
+        ],
         "options": []
     },
     {
@@ -364,6 +411,9 @@ products = [
         "price_100": 170,
         "price_250": 160,
         "price_500": 150,
+        "external_interfaces": [
+            { "type": "Power", "connector": "AC Input", "count": 1 }
+        ],
         "options": []
     },
     {

@@ -12,6 +12,7 @@ A modern, web-based configurator for CompactPCI (cPCI) systems. This application
     *   **Rules**: Define flexible JSON-based compatibility rules.
     *   **Settings**: Configure system-wide settings like the central quote email.
 *   **Internal Interfaces Management**: Track and validate internal interface usage (PCIe, SATA, USB, etc.) to ensure CPU capacity is not exceeded.
+*   **External Interfaces Management**: Manage and summarize external physical connectors (Ethernet, USB, Serial, etc.) on the front/rear panel.
 *   **Quote Generation**: Generate PDF quotes with detailed configuration summaries.
 *   **Modern UI**: Built with React, Tailwind CSS, and Shadcn UI for a polished user experience.
 *   **Toast Notifications**: Non-intrusive feedback for user actions and errors.
@@ -140,7 +141,7 @@ Proprietary - duagon AG
 ## ToDo
 
 
-- Add external interfaces available (e.g., 2x USB 3.2 Gen 2)
+- Add external interfaces available (e.g., 2x USB 3.2 Gen 2) - DONE
 - Power dependant requirement for fan tray - DONE
 - Matching product options to article numbers
 - Improve PDF quote generation

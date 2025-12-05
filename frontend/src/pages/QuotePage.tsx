@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import { useConfigStore } from '../store/configStore';
 
 import { type Product } from '../data/mockProducts';
-import { ArrowLeft, Send, FileText, CheckCircle, Download } from 'lucide-react';
+import { ArrowLeft, Send, FileText, CheckCircle, Download, Cable } from 'lucide-react';
 import { Link, useNavigate } from 'react-router-dom';
 import { cn } from '../lib/utils';
 
@@ -239,6 +239,54 @@ export function QuotePage() {
     }, 0);
 
     const isPowerOverload = powerCapacity > 0 && powerConsumption > powerCapacity;
+
+    // Aggregating External Interfaces
+    const aggregatedInterfaces: Record<string, { type: string, connector: string, count: number }> = {};
+
+    selectedItems.forEach(item => {
+        // Product Interfaces
+        if (item.product.externalInterfaces) {
+            item.product.externalInterfaces.forEach(iface => {
+                const key = `${iface.type}-${iface.connector}`;
+                if (!aggregatedInterfaces[key]) {
+                    aggregatedInterfaces[key] = { ...iface, count: 0 };
+                }
+                aggregatedInterfaces[key].count += iface.count;
+            });
+        }
+
+        // Option Interfaces
+        if (item.product.options && item.options) {
+            Object.entries(item.options).forEach(([optId, optVal]) => {
+                const optDef = (item.product.options as any[]).find((o: any) => o.id === optId);
+                if (optDef) {
+                    let modInterfaces = null;
+                    if (optDef.type === 'select') {
+                        const choice = optDef.choices.find((c: any) => c.value === optVal);
+                        if (choice && choice.externalInterfacesMod) {
+                            modInterfaces = choice.externalInterfacesMod;
+                        }
+                    } else if (optDef.type === 'boolean' && optVal === true) {
+                        if (optDef.externalInterfacesMod) {
+                            modInterfaces = optDef.externalInterfacesMod;
+                        }
+                    }
+
+                    if (modInterfaces) {
+                        modInterfaces.forEach((iface: any) => {
+                            const key = `${iface.type}-${iface.connector}`;
+                            if (!aggregatedInterfaces[key]) {
+                                aggregatedInterfaces[key] = { ...iface, count: 0 };
+                            }
+                            aggregatedInterfaces[key].count += iface.count;
+                        });
+                    }
+                }
+            });
+        }
+    });
+
+    const sortedInterfaces = Object.values(aggregatedInterfaces).sort((a, b) => a.type.localeCompare(b.type));
 
     const generatePDF = async (returnBlob = false) => {
         // Dynamic import to avoid SSR issues if any (though this is SPA)
@@ -481,146 +529,171 @@ export function QuotePage() {
                 </div>
             </div>
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-                {/* Bill of Materials */}
-                <div className="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden">
-                    <div className="p-6 border-b border-slate-100 bg-slate-50/50">
-                        <h2 className="text-lg font-semibold text-slate-900 flex items-center gap-2">
-                            <FileText size={20} className="text-slate-400" />
-                            Bill of Materials
-                        </h2>
-                    </div>
-
-                    <div className="divide-y divide-slate-100">
-                        {selectedItems.length === 0 ? (
-                            <div className="p-8 text-center text-slate-500">
-                                No components selected.
+                <div className="space-y-8">
+                    {/* External Interface Summary */}
+                    {sortedInterfaces.length > 0 && (
+                        <div className="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden">
+                            <div className="p-6 border-b border-slate-100 bg-slate-50/50">
+                                <h2 className="text-lg font-semibold text-slate-900 flex items-center gap-2">
+                                    <Cable size={20} className="text-slate-400" />
+                                    External Interface Summary
+                                </h2>
                             </div>
-                        ) : (
-                            <div className="bg-slate-50 p-6 rounded-xl border border-slate-200">
-                                <h3 className="font-semibold text-slate-800 mb-4 flex items-center gap-2">
-                                    <FileText size={20} />
-                                    Bill of Materials
-                                </h3>
-                                <div className="space-y-3">
-                                    {selectedItems.map((item, idx) => {
-                                        // Calculate unit price for this item (using prototype qty as base reference for display, or show range?)
-                                        // Let's show the unit price for the Prototype Qty
-                                        const unitPriceProto = getPriceForQuantity(item.product, prototypeQtyNum);
-                                        const unitPriceSeries = getPriceForQuantity(item.product, seriesQtyNum);
+                            <div className="p-6 grid grid-cols-2 gap-4">
+                                {sortedInterfaces.map((iface, idx) => (
+                                    <div key={idx} className="flex justify-between items-center p-3 bg-slate-50 rounded-lg border border-slate-100">
+                                        <div>
+                                            <div className="font-semibold text-slate-900">{iface.type}</div>
+                                            <div className="text-xs text-slate-500">{iface.connector}</div>
+                                        </div>
+                                        <div className="text-xl font-bold text-slate-700">{iface.count}</div>
+                                    </div>
+                                ))}
+                            </div>
+                        </div>
+                    )}
 
-                                        let optionPriceProto = 0;
-                                        let optionPriceSeries = 0;
+                    {/* Bill of Materials */}
+                    <div className="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden">
+                        <div className="p-6 border-b border-slate-100 bg-slate-50/50">
+                            <h2 className="text-lg font-semibold text-slate-900 flex items-center gap-2">
+                                <FileText size={20} className="text-slate-400" />
+                                Bill of Materials
+                            </h2>
+                        </div>
 
-                                        if (item.product.options) {
+                        <div className="divide-y divide-slate-100">
+                            {selectedItems.length === 0 ? (
+                                <div className="p-8 text-center text-slate-500">
+                                    No components selected.
+                                </div>
+                            ) : (
+                                <div className="bg-slate-50 p-6 rounded-xl border border-slate-200">
+                                    <h3 className="font-semibold text-slate-800 mb-4 flex items-center gap-2">
+                                        <FileText size={20} />
+                                        Bill of Materials
+                                    </h3>
+                                    <div className="space-y-3">
+                                        {selectedItems.map((item, idx) => {
+                                            // Calculate unit price for this item (using prototype qty as base reference for display, or show range?)
+                                            // Let's show the unit price for the Prototype Qty
+                                            const unitPriceProto = getPriceForQuantity(item.product, prototypeQtyNum);
+                                            const unitPriceSeries = getPriceForQuantity(item.product, seriesQtyNum);
+
+                                            let optionPriceProto = 0;
+                                            let optionPriceSeries = 0;
+
+                                            if (item.product.options) {
+                                                Object.entries(item.options).forEach(([optId, optVal]) => {
+                                                    const optDef = (item.product.options as any[]).find((o: any) => o.id === optId);
+                                                    if (optDef) {
+                                                        if (optDef.type === 'select') {
+                                                            const choice = optDef.choices.find((c: any) => c.value === optVal);
+                                                            if (choice) {
+                                                                optionPriceProto += getOptionPrice(choice.priceMod, prototypeQtyNum);
+                                                                optionPriceSeries += getOptionPrice(choice.priceMod, seriesQtyNum);
+                                                            }
+                                                        } else if (optDef.type === 'boolean' && optVal === true) {
+                                                            optionPriceProto += getOptionPrice(optDef.priceMod, prototypeQtyNum);
+                                                            optionPriceSeries += getOptionPrice(optDef.priceMod, seriesQtyNum);
+                                                        }
+                                                    }
+                                                });
+                                            }
+
+                                            return (
+                                                <div key={idx} className="flex justify-between items-start text-sm p-2 bg-white rounded border border-slate-100">
+                                                    <div>
+                                                        <div className="font-medium">{item.product.name}</div>
+                                                        <div className="text-slate-500 text-xs">{item.product.id}</div>
+                                                        {Object.keys(item.options).length > 0 && item.product.type !== 'backplane' && (
+                                                            <div className="text-xs text-slate-400 mt-1">
+                                                                {Object.entries(item.options).map(([key, val]) => `${key}: ${val}`).join(', ')}
+                                                            </div>
+                                                        )}
+                                                        {item.product.type === 'backplane' && (
+                                                            <div className="text-xs text-slate-500 mt-1 font-mono bg-slate-100 p-2 rounded">
+                                                                {Object.entries(item.options).map(([slot, conns]) => (
+                                                                    <div key={slot}>{slot}: {(conns as string[]).join(', ')}</div>
+                                                                ))}
+                                                            </div>
+                                                        )}
+                                                    </div>
+                                                    <div className="text-right">
+                                                        <div className="font-medium">€{(unitPriceProto + optionPriceProto).toLocaleString()} (Proto)</div>
+                                                        {seriesQtyNum > 0 && (
+                                                            <div className="text-xs text-slate-500">€{(unitPriceSeries + optionPriceSeries).toLocaleString()} (Series)</div>
+                                                        )}
+                                                    </div>
+                                                </div>
+                                            );
+                                        })}
+
+                                        <div className="border-t border-slate-200 pt-3 mt-4">
+                                            <div className="flex justify-between items-center font-bold text-slate-900">
+                                                <span>Prototype Total ({prototypeQtyNum} units)</span>
+                                                <span>€{(prototypeTotal * (prototypeQtyNum || 1)).toLocaleString()}</span>
+                                            </div>
+                                            {seriesQtyNum > 0 && (
+                                                <div className="flex justify-between items-center font-bold text-duagon-blue mt-2">
+                                                    <span>Series Total ({seriesQtyNum} units)</span>
+                                                    <span>€{(seriesTotal * seriesQtyNum).toLocaleString()}</span>
+                                                </div>
+                                            )}
+                                        </div>
+                                    </div>
+                                </div>
+                            )}
+                        </div>
+
+                        <div className="p-6 bg-slate-50 border-t border-slate-200 space-y-2">
+                            <div className="flex justify-between text-sm text-slate-600">
+                                <span>Total Power Consumption</span>
+                                <span className={cn(isPowerOverload ? "text-red-600 font-bold" : "")}>
+                                    {powerConsumption}W / {powerCapacity > 0 ? `${powerCapacity}W` : 'External'}
+                                </span>
+                            </div>
+                            {isPowerOverload && (
+                                <div className="text-xs text-red-600 bg-red-50 p-2 rounded border border-red-100">
+                                    Warning: Power consumption exceeds PSU capacity!
+                                </div>
+                            )}
+                            <div className="flex justify-between text-sm text-slate-600">
+                                <span>System EOL</span>
+                                <span className="font-medium text-amber-600">
+                                    {selectedItems.reduce((min, item) => {
+                                        let currentMin = min;
+
+                                        // Check product EOL
+                                        if (item.product.eol_date) {
+                                            if (!currentMin || item.product.eol_date < currentMin) {
+                                                currentMin = item.product.eol_date;
+                                            }
+                                        }
+
+                                        // Check options EOL
+                                        if (item.product.options && item.options) {
                                             Object.entries(item.options).forEach(([optId, optVal]) => {
                                                 const optDef = (item.product.options as any[]).find((o: any) => o.id === optId);
-                                                if (optDef) {
-                                                    if (optDef.type === 'select') {
-                                                        const choice = optDef.choices.find((c: any) => c.value === optVal);
-                                                        if (choice) {
-                                                            optionPriceProto += getOptionPrice(choice.priceMod, prototypeQtyNum);
-                                                            optionPriceSeries += getOptionPrice(choice.priceMod, seriesQtyNum);
+                                                if (optDef && optDef.type === 'select') {
+                                                    const choice = optDef.choices.find((c: any) => c.value === optVal);
+                                                    if (choice && choice.eol_date) {
+                                                        if (!currentMin || choice.eol_date < currentMin) {
+                                                            currentMin = choice.eol_date;
                                                         }
-                                                    } else if (optDef.type === 'boolean' && optVal === true) {
-                                                        optionPriceProto += getOptionPrice(optDef.priceMod, prototypeQtyNum);
-                                                        optionPriceSeries += getOptionPrice(optDef.priceMod, seriesQtyNum);
                                                     }
                                                 }
                                             });
                                         }
 
-                                        return (
-                                            <div key={idx} className="flex justify-between items-start text-sm p-2 bg-white rounded border border-slate-100">
-                                                <div>
-                                                    <div className="font-medium">{item.product.name}</div>
-                                                    <div className="text-slate-500 text-xs">{item.product.id}</div>
-                                                    {Object.keys(item.options).length > 0 && item.product.type !== 'backplane' && (
-                                                        <div className="text-xs text-slate-400 mt-1">
-                                                            {Object.entries(item.options).map(([key, val]) => `${key}: ${val}`).join(', ')}
-                                                        </div>
-                                                    )}
-                                                    {item.product.type === 'backplane' && (
-                                                        <div className="text-xs text-slate-500 mt-1 font-mono bg-slate-100 p-2 rounded">
-                                                            {Object.entries(item.options).map(([slot, conns]) => (
-                                                                <div key={slot}>{slot}: {(conns as string[]).join(', ')}</div>
-                                                            ))}
-                                                        </div>
-                                                    )}
-                                                </div>
-                                                <div className="text-right">
-                                                    <div className="font-medium">€{(unitPriceProto + optionPriceProto).toLocaleString()} (Proto)</div>
-                                                    {seriesQtyNum > 0 && (
-                                                        <div className="text-xs text-slate-500">€{(unitPriceSeries + optionPriceSeries).toLocaleString()} (Series)</div>
-                                                    )}
-                                                </div>
-                                            </div>
-                                        );
-                                    })}
-
-                                    <div className="border-t border-slate-200 pt-3 mt-4">
-                                        <div className="flex justify-between items-center font-bold text-slate-900">
-                                            <span>Prototype Total ({prototypeQtyNum} units)</span>
-                                            <span>€{(prototypeTotal * (prototypeQtyNum || 1)).toLocaleString()}</span>
-                                        </div>
-                                        {seriesQtyNum > 0 && (
-                                            <div className="flex justify-between items-center font-bold text-duagon-blue mt-2">
-                                                <span>Series Total ({seriesQtyNum} units)</span>
-                                                <span>€{(seriesTotal * seriesQtyNum).toLocaleString()}</span>
-                                            </div>
-                                        )}
-                                    </div>
-                                </div>
+                                        return currentMin;
+                                    }, '' as string).split('-')[0] || 'N/A'}
+                                </span>
                             </div>
-                        )}
-                    </div>
-
-                    <div className="p-6 bg-slate-50 border-t border-slate-200 space-y-2">
-                        <div className="flex justify-between text-sm text-slate-600">
-                            <span>Total Power Consumption</span>
-                            <span className={cn(isPowerOverload ? "text-red-600 font-bold" : "")}>
-                                {powerConsumption}W / {powerCapacity > 0 ? `${powerCapacity}W` : 'External'}
-                            </span>
-                        </div>
-                        {isPowerOverload && (
-                            <div className="text-xs text-red-600 bg-red-50 p-2 rounded border border-red-100">
-                                Warning: Power consumption exceeds PSU capacity!
+                            <div className="flex justify-between text-lg font-bold text-slate-900 pt-2 border-t border-slate-200/50">
+                                <span>Estimated Total</span>
+                                <span>€{totalCost.toLocaleString()}</span>
                             </div>
-                        )}
-                        <div className="flex justify-between text-sm text-slate-600">
-                            <span>System EOL</span>
-                            <span className="font-medium text-amber-600">
-                                {selectedItems.reduce((min, item) => {
-                                    let currentMin = min;
-
-                                    // Check product EOL
-                                    if (item.product.eol_date) {
-                                        if (!currentMin || item.product.eol_date < currentMin) {
-                                            currentMin = item.product.eol_date;
-                                        }
-                                    }
-
-                                    // Check options EOL
-                                    if (item.product.options && item.options) {
-                                        Object.entries(item.options).forEach(([optId, optVal]) => {
-                                            const optDef = (item.product.options as any[]).find((o: any) => o.id === optId);
-                                            if (optDef && optDef.type === 'select') {
-                                                const choice = optDef.choices.find((c: any) => c.value === optVal);
-                                                if (choice && choice.eol_date) {
-                                                    if (!currentMin || choice.eol_date < currentMin) {
-                                                        currentMin = choice.eol_date;
-                                                    }
-                                                }
-                                            }
-                                        });
-                                    }
-
-                                    return currentMin;
-                                }, '' as string).split('-')[0] || 'N/A'}
-                            </span>
-                        </div>
-                        <div className="flex justify-between text-lg font-bold text-slate-900 pt-2 border-t border-slate-200/50">
-                            <span>Estimated Total</span>
-                            <span>€{totalCost.toLocaleString()}</span>
                         </div>
                     </div>
                 </div>

@@ -4,14 +4,10 @@ import { cn } from '../lib/utils';
 interface SubConfigModalProps {
     isOpen: boolean;
     onClose: () => void;
-    onSave: (options: any) => void;
-    title: string;
-    children: React.ReactNode;
-    saveLabel?: string;
-    saveButtonClass?: string;
+    onRemove?: () => void;
 }
 
-export function SubConfigModal({ isOpen, onClose, onSave, title, children, saveLabel, saveButtonClass }: SubConfigModalProps) {
+export function SubConfigModal({ isOpen, onClose, onSave, onRemove, title, children, saveLabel, saveButtonClass }: SubConfigModalProps) {
     if (!isOpen) return null;
 
     return (
@@ -29,6 +25,14 @@ export function SubConfigModal({ isOpen, onClose, onSave, title, children, saveL
                 </div>
 
                 <div className="p-4 bg-slate-50 border-t border-slate-100 flex justify-end gap-3">
+                    {onRemove && (
+                        <button
+                            onClick={onRemove}
+                            className="mr-auto px-4 py-2 text-sm font-medium text-red-600 hover:text-red-700 hover:bg-red-50 rounded-lg transition-colors"
+                        >
+                            Remove
+                        </button>
+                    )}
                     <button
                         onClick={onClose}
                         className="px-4 py-2 text-sm font-medium text-slate-600 hover:text-slate-800"

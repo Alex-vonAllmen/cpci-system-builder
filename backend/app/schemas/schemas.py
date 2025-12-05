@@ -22,6 +22,7 @@ class ProductBase(BaseModel):
     connectors: Optional[List[str]] = None
     options: Optional[Any] = None
     interfaces: Optional[Dict[str, int]] = None
+    external_interfaces: Optional[List[Dict[str, Any]]] = None
 
 class ProductCreate(ProductBase):
     pass
@@ -33,6 +34,7 @@ class Product(ProductBase):
 # Rule Schemas
 class RuleBase(BaseModel):
     description: str
+    category: Optional[str] = None
     definition: dict
 
 class RuleCreate(RuleBase):

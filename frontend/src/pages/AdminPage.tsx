@@ -76,6 +76,7 @@ export function AdminPage() {
         height_u: 0,
         connectors: [] as string[],
         interfaces: [] as { type: string, count: number }[], // Array for form handling
+        externalInterfaces: [] as { type: string, connector: string, count: number }[],
         image_url: '',
         url: '',
     });
@@ -112,6 +113,7 @@ export function AdminPage() {
                 ...newProduct,
                 options: newProduct.options ? JSON.parse(newProduct.options) : null,
                 interfaces: Object.keys(interfacesObj).length > 0 ? interfacesObj : null,
+                external_interfaces: newProduct.externalInterfaces.length > 0 ? newProduct.externalInterfaces : null,
             };
 
             if (isEditing) {
@@ -141,6 +143,7 @@ export function AdminPage() {
                 height_u: 0,
                 connectors: [],
                 interfaces: [],
+                externalInterfaces: [],
                 image_url: '',
                 url: '',
             });
@@ -175,6 +178,7 @@ export function AdminPage() {
             height_u: product.heightU || 0,
             connectors: product.connectors || [],
             interfaces: interfacesArray,
+            externalInterfaces: product.externalInterfaces || [],
             image_url: product.image_url || '',
             url: product.url || '',
         });
@@ -300,7 +304,7 @@ export function AdminPage() {
                                         setNewProduct({
                                             id: '', type: 'cpu', name: '', description: '', power_watts: 0, width_hp: 4,
                                             price_1: 0, price_25: 0, price_50: 0, price_100: 0, price_250: 0, price_500: 0,
-                                            options: '', eol_date: '', height_u: 0, connectors: [], interfaces: [], image_url: '', url: ''
+                                            options: '', eol_date: '', height_u: 0, connectors: [], interfaces: [], externalInterfaces: [], image_url: '', url: ''
                                         });
                                         setIsEditing(false);
                                         setIsCreating(true);
@@ -441,7 +445,7 @@ export function AdminPage() {
 
                                     <div className="col-span-2 space-y-2 border-t pt-4 mt-2">
                                         <div className="flex justify-between items-center">
-                                            <label className="text-sm font-medium text-slate-700">Internal Interfaces</label>
+                                            <label className="text-sm font-medium text-slate-700">Internal Interfaces (Backplane)</label>
                                             <button
                                                 type="button"
                                                 onClick={() => setNewProduct({
@@ -511,6 +515,76 @@ export function AdminPage() {
                                             For CPUs, this defines <strong>capacity</strong> (positive). For peripherals, this defines <strong>consumption</strong> (positive).
                                             The system will subtract peripheral consumption from CPU capacity.
                                         </p>
+                                    </div>
+
+                                    <div className="col-span-2 space-y-2 border-t pt-4 mt-2">
+                                        <div className="flex justify-between items-center">
+                                            <label className="text-sm font-medium text-slate-700">External Interfaces (Front/Rear IO)</label>
+                                            <button
+                                                type="button"
+                                                onClick={() => setNewProduct({
+                                                    ...newProduct,
+                                                    externalInterfaces: [...newProduct.externalInterfaces, { type: '', connector: '', count: 1 }]
+                                                })}
+                                                className="text-xs flex items-center gap-1 text-duagon-blue hover:underline"
+                                            >
+                                                <Plus size={14} /> Add External Interface
+                                            </button>
+                                        </div>
+
+                                        {newProduct.externalInterfaces.length === 0 && (
+                                            <p className="text-xs text-slate-500 italic">No external interfaces defined.</p>
+                                        )}
+
+                                        <div className="space-y-2">
+                                            {newProduct.externalInterfaces.map((iface, idx) => (
+                                                <div key={idx} className="flex gap-2 items-center">
+                                                    <input
+                                                        type="text"
+                                                        className="flex-1 px-3 py-2 border border-slate-300 rounded-lg text-sm"
+                                                        value={iface.type}
+                                                        onChange={e => {
+                                                            const newInterfaces = [...newProduct.externalInterfaces];
+                                                            newInterfaces[idx].type = e.target.value;
+                                                            setNewProduct({ ...newProduct, externalInterfaces: newInterfaces });
+                                                        }}
+                                                        placeholder="Type (e.g. Ethernet)"
+                                                    />
+                                                    <input
+                                                        type="text"
+                                                        className="flex-1 px-3 py-2 border border-slate-300 rounded-lg text-sm"
+                                                        value={iface.connector}
+                                                        onChange={e => {
+                                                            const newInterfaces = [...newProduct.externalInterfaces];
+                                                            newInterfaces[idx].connector = e.target.value;
+                                                            setNewProduct({ ...newProduct, externalInterfaces: newInterfaces });
+                                                        }}
+                                                        placeholder="Connector (e.g. RJ45)"
+                                                    />
+                                                    <input
+                                                        type="number"
+                                                        className="w-24 px-3 py-2 border border-slate-300 rounded-lg text-sm"
+                                                        value={iface.count}
+                                                        onChange={e => {
+                                                            const newInterfaces = [...newProduct.externalInterfaces];
+                                                            newInterfaces[idx].count = Number(e.target.value);
+                                                            setNewProduct({ ...newProduct, externalInterfaces: newInterfaces });
+                                                        }}
+                                                        placeholder="Count"
+                                                    />
+                                                    <button
+                                                        type="button"
+                                                        onClick={() => {
+                                                            const newInterfaces = newProduct.externalInterfaces.filter((_, i) => i !== idx);
+                                                            setNewProduct({ ...newProduct, externalInterfaces: newInterfaces });
+                                                        }}
+                                                        className="text-red-500 hover:text-red-700 p-2"
+                                                    >
+                                                        <Trash2 size={16} />
+                                                    </button>
+                                                </div>
+                                            ))}
+                                        </div>
                                     </div>
 
                                     <div className="col-span-2 grid grid-cols-3 gap-4 border-t pt-4 mt-2">

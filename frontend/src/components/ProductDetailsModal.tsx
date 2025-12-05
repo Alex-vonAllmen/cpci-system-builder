@@ -54,6 +54,20 @@ export function ProductDetailsModal({ isOpen, onClose, product }: ProductDetails
                         </div>
                     )}
 
+                    {product.externalInterfaces && product.externalInterfaces.length > 0 && (
+                        <div>
+                            <h5 className="font-bold text-slate-900 mb-2 text-sm">External Interfaces</h5>
+                            <div className="grid grid-cols-2 gap-2">
+                                {product.externalInterfaces.map((iface, idx) => (
+                                    <div key={idx} className="bg-green-50 p-2 rounded border border-green-100 flex justify-between items-center">
+                                        <span className="text-xs text-green-800 font-semibold">{iface.type} ({iface.connector})</span>
+                                        <span className="font-bold text-green-900">{iface.count}</span>
+                                    </div>
+                                ))}
+                            </div>
+                        </div>
+                    )}
+
                     {product.connectors && product.connectors.length > 0 && (
                         <div>
                             <h5 className="font-bold text-slate-900 mb-2 text-sm">Connectors</h5>
