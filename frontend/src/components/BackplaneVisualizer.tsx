@@ -88,7 +88,7 @@ export function BackplaneVisualizer() {
                     if (slot.blockedBy) return null; // Skip blocked slots, they are covered by the blocker
                     if (!slot.componentId) return null;
 
-                    const x = PADDING + (index * (SLOT_WIDTH + GAP));
+                    let x = PADDING + (index * (SLOT_WIDTH + GAP));
                     const y = PADDING;
 
                     // Calculate width based on slot.width (HP)
@@ -96,6 +96,13 @@ export function BackplaneVisualizer() {
                     // 8HP = 2 slot widths + 1 gap
                     const slotsCovered = Math.ceil((slot.width || 4) / 4);
                     const width = (slotsCovered * SLOT_WIDTH) + ((slotsCovered - 1) * GAP);
+
+                    // FIX: If Right-aligned System Slot (Last Slot), shift X leftwards
+                    if (slot.type === 'system' && index === slots.length - 1 && slotsCovered > 1) {
+                        const shiftSlots = slotsCovered - 1;
+                        const shiftAmount = (shiftSlots * SLOT_WIDTH) + (shiftSlots * GAP);
+                        x -= shiftAmount;
+                    }
 
                     return (
                         <g key={`comp-${slot.id}`} transform={`translate(${x}, ${y})`}>
