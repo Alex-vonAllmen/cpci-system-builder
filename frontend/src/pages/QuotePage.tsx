@@ -9,7 +9,7 @@ import { cn } from '../lib/utils';
 import { useToast } from '../components/ui/Toast';
 
 export function QuotePage() {
-    const { slots, chassisId, chassisOptions, psuId, psuOptions, products, fetchProducts, resetConfig } = useConfigStore();
+    const { slots, chassisId, chassisOptions, psuId, psuOptions, products, articles, fetchProducts, resetConfig } = useConfigStore();
     const [isSubmitting, setIsSubmitting] = useState(false);
     const [isSuccess, setIsSuccess] = useState(false);
     const navigate = useNavigate();
@@ -22,6 +22,50 @@ export function QuotePage() {
     const handleStartNew = () => {
         resetConfig();
         navigate('/');
+    };
+
+    // Helper to find matching article
+    const findMatchingArticle = (productId: string, options: Record<string, any>) => {
+        return articles?.find((a: any) => {
+            if (a.product_id !== productId) return false;
+
+            const articleOptions = a.selected_options || {};
+            const itemOptions = options || {};
+
+            console.log(`Checking match for ${productId}:`, { articleOptions, itemOptions });
+
+            const articleKeys = Object.keys(articleOptions);
+            const itemKeys = Object.keys(itemOptions);
+
+            // Check 1: All requirements in matched article must be present in item
+            const articleRequirementsMet = articleKeys.every(key => {
+                const requiredValue = articleOptions[key];
+                const actualValue = itemOptions[key];
+
+                // Special handling for booleans: missing key implies false
+                if (requiredValue === false) {
+                    return actualValue === false || actualValue === undefined || actualValue === null;
+                }
+
+                // Strict equality for others
+                return requiredValue === actualValue;
+            });
+
+            if (!articleRequirementsMet) return false;
+
+            // Check 2: Item shouldn't have extra "truthy" options not in article
+            // (e.g. if item has {ram: 16gb, extra: true} and article is just {ram: 16gb}, it's NOT a match)
+            const noExtraRequirements = itemKeys.every(key => {
+                // If the key is already in article, we checked it above.
+                if (Object.prototype.hasOwnProperty.call(articleOptions, key)) return true;
+
+                // If key is NOT in article, it must be "empty"/false to still match
+                const val = itemOptions[key];
+                return val === false || val === undefined || val === null || val === '';
+            });
+
+            return noExtraRequirements;
+        });
     };
 
     // Form State
@@ -332,10 +376,15 @@ export function QuotePage() {
                 connectorsStr = (item.product.connectors || []).join(', ');
             }
 
+            // Article Match
+            const article = findMatchingArticle(item.product.id, item.options);
+            const partNumber = article ? article.article_number : item.product.id;
+            const description = article ? `${item.product.name} (Article Match)` : item.product.name;
+
             return [
                 item.slotLabel,
-                item.product.id,
-                item.product.name,
+                partNumber,
+                description,
                 connectorsStr,
                 item.product.type === 'backplane' ? '-' : `${item.product.widthHp}HP`,
                 item.product.type,
@@ -399,27 +448,35 @@ export function QuotePage() {
             // Generate PDF and JSON blobs
             const pdfBase64 = await generatePDF(true);
 
-            const bomData = selectedItems.map(item => ({
-                slot: item.slotLabel,
-                component: item.product.name,
-                partNumber: item.product.id,
-                connectors: item.product.connectors || [],
-                options: item.options
-            }));
+            const bomData = selectedItems.map(item => {
+                const article = findMatchingArticle(item.product.id, item.options);
+                return {
+                    slot: item.slotLabel,
+                    component: item.product.name,
+                    partNumber: article ? article.article_number : item.product.id,
+                    isArticle: !!article,
+                    connectors: item.product.connectors || [],
+                    options: item.options
+                };
+            });
             const jsonBase64 = "data:application/json;base64," + btoa(JSON.stringify(bomData, null, 2));
 
             const payload = {
                 user: formData,
                 config: { slots, chassisId, psuId },
-                items: selectedItems.map(item => ({
-                    slotLabel: item.slotLabel,
-                    product: {
-                        id: item.product.id,
-                        name: item.product.name,
-                        type: item.product.type
-                    },
-                    options: item.options
-                })),
+                items: selectedItems.map(item => {
+                    const article = findMatchingArticle(item.product.id, item.options);
+                    return {
+                        slotLabel: item.slotLabel,
+                        product: {
+                            id: item.product.id,
+                            name: item.product.name,
+                            type: item.product.type
+                        },
+                        articleNumber: article ? article.article_number : undefined,
+                        options: item.options
+                    };
+                }),
                 totalCost: totalCost,
                 pdf_base64: pdfBase64,
                 json_base64: jsonBase64
@@ -474,13 +531,17 @@ export function QuotePage() {
         };
 
         const exportData = {
-            bom: selectedItems.map(item => ({
-                slot: item.slotLabel,
-                component: item.product.name,
-                partNumber: item.product.id,
-                connectors: item.product.connectors || [],
-                options: item.options
-            })),
+            bom: selectedItems.map(item => {
+                const article = findMatchingArticle(item.product.id, item.options);
+                return {
+                    slot: item.slotLabel,
+                    component: item.product.name,
+                    partNumber: article ? article.article_number : item.product.id,
+                    isArticle: !!article,
+                    connectors: item.product.connectors || [],
+                    options: item.options
+                };
+            }),
             config: fullConfig
         };
 
@@ -601,29 +662,38 @@ export function QuotePage() {
                                                 });
                                             }
 
+                                            const article = findMatchingArticle(item.product.id, item.options);
+
+                                            // Determine Article Number to display
+                                            // If matched: use article.article_number
+                                            // If not matched: use {Product.id}-xx
+                                            const displayArticleNumber = article ? article.article_number : `${item.product.id}-xx`;
+
                                             return (
-                                                <div key={idx} className="flex justify-between items-start text-sm p-2 bg-white rounded border border-slate-100">
-                                                    <div>
-                                                        <div className="font-medium">{item.product.name}</div>
-                                                        <div className="text-slate-500 text-xs">{item.product.id}</div>
-                                                        {Object.keys(item.options).length > 0 && item.product.type !== 'backplane' && (
-                                                            <div className="text-xs text-slate-400 mt-1">
-                                                                {Object.entries(item.options).map(([key, val]) => `${key}: ${val}`).join(', ')}
-                                                            </div>
-                                                        )}
-                                                        {item.product.type === 'backplane' && (
-                                                            <div className="text-xs text-slate-500 mt-1 font-mono bg-slate-100 p-2 rounded">
-                                                                {Object.entries(item.options).map(([slot, conns]) => (
-                                                                    <div key={slot}>{slot}: {(conns as string[]).join(', ')}</div>
-                                                                ))}
-                                                            </div>
-                                                        )}
-                                                    </div>
-                                                    <div className="text-right">
-                                                        <div className="font-medium">€{(unitPriceProto + optionPriceProto).toLocaleString()} (Proto)</div>
-                                                        {seriesQtyNum > 0 && (
-                                                            <div className="text-xs text-slate-500">€{(unitPriceSeries + optionPriceSeries).toLocaleString()} (Series)</div>
-                                                        )}
+                                                <div key={idx} className="flex justify-between items-start text-sm p-3 bg-white rounded border border-slate-100">
+                                                    <div className="flex-1">
+                                                        {/* Row 1: Slot | Article# | Name | Price(S) */}
+                                                        <div className="flex items-center gap-3 font-medium text-slate-900 mb-1">
+                                                            <span className="text-slate-500 font-mono w-8">{item.slotLabel}</span>
+                                                            <span className="font-mono text-duagon-blue min-w-[120px]">{displayArticleNumber}</span>
+                                                            <span className="flex-1">{item.product.name}</span>
+                                                            <span className="text-right w-24 tabular-nums">€{(unitPriceSeries + optionPriceSeries).toLocaleString()}</span>
+                                                        </div>
+
+                                                        {/* Row 2: Part# | Price(P) */}
+                                                        <div className="flex items-center gap-3 text-xs text-slate-500">
+                                                            <span className="w-8"></span> {/* Spacer for Slot */}
+                                                            <span className="font-mono min-w-[120px]">{item.product.id}</span>
+                                                            <span className="flex-1 italic">
+                                                                {article ? (
+                                                                    <span className="flex items-center gap-1 text-green-600">
+                                                                        <span className="w-1.5 h-1.5 rounded-full bg-green-500"></span>
+                                                                        Matched
+                                                                    </span>
+                                                                ) : "Standard Configuration"}
+                                                            </span>
+                                                            <span className="text-right w-24 tabular-nums">€{(unitPriceProto + optionPriceProto).toLocaleString()} (Proto)</span>
+                                                        </div>
                                                     </div>
                                                 </div>
                                             );

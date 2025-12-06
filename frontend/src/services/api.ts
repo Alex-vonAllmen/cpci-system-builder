@@ -187,5 +187,49 @@ export const api = {
                 headers: getHeaders(),
             });
         }
+    },
+    articles: {
+        list: async () => {
+            const res = await fetch(`${API_BASE_URL}/articles/`);
+            return res.json();
+        },
+        create: async (data: any) => {
+            const res = await fetch(`${API_BASE_URL}/articles/`, {
+                method: 'POST',
+                headers: getHeaders(),
+                body: JSON.stringify(data),
+            });
+            return res.json();
+        },
+        update: async (id: number, data: any) => {
+            const res = await fetch(`${API_BASE_URL}/articles/${id}`, {
+                method: 'PUT',
+                headers: getHeaders(),
+                body: JSON.stringify(data),
+            });
+            return res.json();
+        },
+        delete: async (id: number) => {
+            await fetch(`${API_BASE_URL}/articles/${id}`, {
+                method: 'DELETE',
+                headers: getHeaders(),
+            });
+        },
+        import: async (file: File) => {
+            const text = await file.text();
+            const json = JSON.parse(text);
+            const res = await fetch(`${API_BASE_URL}/articles/import`, {
+                method: 'POST',
+                headers: getHeaders(),
+                body: JSON.stringify(json),
+            });
+            return res.json();
+        },
+        export: async () => {
+            const res = await fetch(`${API_BASE_URL}/articles/export`, {
+                headers: getHeaders()
+            });
+            return res.blob();
+        }
     }
 };

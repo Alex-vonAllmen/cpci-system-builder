@@ -60,3 +60,13 @@ class SystemSetting(Base):
 
     key = Column(String, primary_key=True, index=True)
     value = Column(String)
+
+class Article(Base):
+    __tablename__ = "articles"
+
+    id = Column(Integer, primary_key=True, index=True)
+    article_number = Column(String, unique=True, index=True)
+    product_id = Column(String, ForeignKey("products.id"))
+    selected_options = Column(JSON) # { "option_id": "value" }
+
+    product = relationship("Product")

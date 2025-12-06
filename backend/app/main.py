@@ -1,27 +1,27 @@
 from fastapi import FastAPI
-from app.core.config import settings
-from app.api import admin, configurator, examples
-from app.db.session import engine, Base
-
-# Create tables
-Base.metadata.create_all(bind=engine)
-
 from fastapi.middleware.cors import CORSMiddleware
+from app.core.config import settings
+from app.api import admin, configurator, examples, articles
 
 app = FastAPI(title=settings.PROJECT_NAME, openapi_url=f"{settings.API_V1_STR}/openapi.json")
 
-# Set all CORS enabled origins
+# CORS Configuration
+origins = [
+    "http://localhost:5173",
+    "http://localhost:3000", # Common React port backup
+]
+
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["http://localhost:5173", "http://localhost:5174", "http://localhost:3000", "http://127.0.0.1:5173", "http://127.0.0.1:5174", "http://127.0.0.1:3000"],
+    allow_origins=origins,
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
 )
-
 app.include_router(admin.router, prefix="/api/admin", tags=["admin"])
 app.include_router(configurator.router, prefix="/api/config", tags=["configurator"])
 app.include_router(examples.router, prefix="/api/examples", tags=["examples"])
+app.include_router(articles.router, prefix="/api/articles", tags=["articles"])
 
 @app.get("/")
 def read_root():

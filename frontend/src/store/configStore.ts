@@ -22,6 +22,7 @@ interface ConfigState {
     psuOptions: Record<string, any>;
     products: any[];
     rules: any[];
+    articles: any[];
 
     setSlotCount: (count: number) => void;
     setSystemSlotPosition: (position: SystemSlotPosition) => void;
@@ -321,6 +322,8 @@ export const useConfigStore = create<ConfigState>((set) => ({
     }),
 
     products: [],
+    rules: [],
+    articles: [],
     fetchProducts: async () => {
         try {
             // Import api dynamically to avoid circular dependency if api imports store (unlikely but safe)
@@ -332,6 +335,10 @@ export const useConfigStore = create<ConfigState>((set) => ({
             // Also fetch rules
             const rules = await api.rules.list();
             set({ rules });
+
+            // Fetch Articles
+            const articles = await api.articles.list();
+            set({ articles });
         } catch (error) {
             console.error("Failed to fetch products/rules", error);
         }
@@ -352,8 +359,6 @@ export const useConfigStore = create<ConfigState>((set) => ({
             blockedBy: null,
         })),
     })),
-
-    rules: [],
 
     examples: [],
     fetchExamples: async () => {

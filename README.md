@@ -7,9 +7,11 @@ A modern, web-based configurator for CompactPCI (cPCI) systems. This application
 *   **Visual System Topology**: Interactive visualization of the system backplane and slots.
 *   **Rule-Based Configuration**: Intelligent rule engine prevents incompatible component selections (e.g., "If G28 is in Slot 1, G239 is forbidden in Slot 2").
 *   **Dynamic Pricing**: Real-time price calculation with tiered pricing support (1+, 25+, 50+, etc.).
+*   **Article Matching**: Automatically matches configured product options to pre-defined Article Numbers for accurate quoting.
 *   **Admin Dashboard**: comprehensive admin panel to manage:
     *   **Products**: Create, edit, and delete components.
     *   **Rules**: Define flexible JSON-based compatibility rules.
+    *   **Articles**: Manage article numbers mapped to specific product configurations.
     *   **Settings**: Configure system-wide settings like the central quote email.
 *   **Internal Interfaces Management**: Track and validate internal interface usage (PCIe, SATA, USB, etc.) to ensure CPU capacity is not exceeded.
 *   **External Interfaces Management**: Manage and summarize external physical connectors (Ethernet, USB, Serial, etc.) on the front/rear panel.
@@ -143,7 +145,7 @@ Proprietary - duagon AG
 
 - Add external interfaces available (e.g., 2x USB 3.2 Gen 2) - DONE
 - Power dependant requirement for fan tray - DONE
-- Matching product options to article numbers
+- Matching product options to article numbers - DONE
 - Improve PDF quote generation
 - Instead of selecting slots at the beginning, you should select half- or full 19"-inch rack; information in centimeters instead of HP, U - DONE
 - Example configurations based on existings - DONE

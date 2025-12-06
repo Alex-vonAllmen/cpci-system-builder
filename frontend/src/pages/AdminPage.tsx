@@ -2,6 +2,7 @@ import { useState, useEffect, useRef } from 'react';
 import { api } from '../services/api';
 import { SubConfigModal } from '../components/SubConfigModal';
 import { ExamplesManager } from '../components/ExamplesManager';
+import { ArticlesManager } from '../components/ArticlesManager';
 import { useToast } from '../components/ui/Toast'; // Corrected path for useToast
 import { Plus, Trash2, Edit, Download, Upload } from 'lucide-react';
 import { cn } from '../lib/utils';
@@ -12,7 +13,7 @@ export function AdminPage() {
     const [isLoading, setIsLoading] = useState(false);
     const [isCreating, setIsCreating] = useState(false);
     const [isEditing, setIsEditing] = useState(false);
-    const [activeTab, setActiveTab] = useState<'products' | 'settings' | 'rules' | 'examples'>('products');
+    const [activeTab, setActiveTab] = useState<'products' | 'settings' | 'rules' | 'examples' | 'articles'>('products');
     const [settings, setSettings] = useState<Record<string, string>>({});
     const [deleteConfirmation, setDeleteConfirmation] = useState<{ id: string, name: string } | null>(null); // For products
     const [importResult, setImportResult] = useState<{ added: number, updated: number } | null>(null);
@@ -278,6 +279,15 @@ export function AdminPage() {
                             )}
                         >
                             Examples
+                        </button>
+                        <button
+                            onClick={() => setActiveTab('articles')}
+                            className={cn(
+                                "px-4 py-2 text-sm font-medium rounded-md transition-colors",
+                                activeTab === 'articles' ? "bg-duagon-blue text-white" : "text-slate-600 hover:bg-slate-50"
+                            )}
+                        >
+                            Articles
                         </button>
                     </div>
                 </div>
@@ -715,8 +725,10 @@ export function AdminPage() {
                     </div>
                 ) : activeTab === 'rules' ? (
                     <RulesManager />
-                ) : (
+                ) : activeTab === 'examples' ? (
                     <ExamplesManager />
+                ) : (
+                    <ArticlesManager />
                 )}
             </div>
 

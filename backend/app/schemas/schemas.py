@@ -94,3 +94,20 @@ class QuoteRequest(BaseModel):
     totalCost: float
     pdf_base64: Optional[str] = None
     json_base64: Optional[str] = None
+
+# Article Schemas
+class ArticleBase(BaseModel):
+    article_number: str
+    product_id: str
+    selected_options: Dict[str, Any]
+
+class ArticleCreate(ArticleBase):
+    pass
+
+class Article(ArticleBase):
+    id: int
+    class Config:
+        from_attributes = True
+
+class ArticleImport(ArticleBase):
+    id: Optional[int] = None

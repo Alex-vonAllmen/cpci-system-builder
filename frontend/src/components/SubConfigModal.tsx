@@ -4,7 +4,12 @@ import { cn } from '../lib/utils';
 interface SubConfigModalProps {
     isOpen: boolean;
     onClose: () => void;
+    onSave?: (data: any) => void;
     onRemove?: () => void;
+    title?: string;
+    children?: React.ReactNode;
+    saveLabel?: string;
+    saveButtonClass?: string;
 }
 
 export function SubConfigModal({ isOpen, onClose, onSave, onRemove, title, children, saveLabel, saveButtonClass }: SubConfigModalProps) {

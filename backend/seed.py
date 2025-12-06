@@ -627,7 +627,38 @@ def seed():
             existing_ex.image_url = ex_data["image_url"]
 
     db.commit()
+    db.commit()
     print("Seeding complete.")
+
+    # Seed Articles
+    articles = [
+        {
+            "article_number": "G25A-16GB-3",
+            "product_id": "G25A",
+            "selected_options": {"ram": "16gb", "conformal_coating": False}
+        },
+        {
+            "article_number": "G25A-32GB-CC-3",
+            "product_id": "G25A",
+            "selected_options": {"ram": "32gb", "conformal_coating": True}
+        },
+        {
+            "article_number": "G211-STD",
+            "product_id": "G211",
+            "selected_options": {}
+        }
+    ]
+
+    for art_data in articles:
+        existing = db.query(models.Article).filter(models.Article.article_number == art_data["article_number"]).first()
+        if not existing:
+            print(f"Creating article: {art_data['article_number']}")
+            db.add(models.Article(**art_data))
+        else:
+             print(f"Updating article: {art_data['article_number']}")
+             existing.product_id = art_data["product_id"]
+             existing.selected_options = art_data["selected_options"]
+    db.commit()
 
 if __name__ == "__main__":
     seed()
