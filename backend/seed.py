@@ -551,14 +551,14 @@ def seed():
             db.add(models.Rule(**r_data))
         else:
             print(f"Updating rule: {r_data['description']}")
-            print(f"Updating rule: {r_data['description']}")
             existing_rule.definition = r_data["definition"]
 
     # Seed Examples
     examples = [
         {
+            "example_number": "EX-BASIC-3U",
             "name": "Basic Control System",
-            "description": "3U System with G25A CPU and Storage, ideal for industrial control.",
+            "description": "A simple 3U CompactPCI Serial system with CPU and Power Supply.",
             "config_json": json.dumps({
                 "slotCount": 10,
                 "systemSlotPosition": "left",
@@ -580,6 +580,7 @@ def seed():
             "image_url": "https://www.duagon.com/fileadmin/_processed_/c/6/csm_G25A_front_1_d2b0c9c0c3.png"
         },
         {
+            "example_number": "EX-DATA-LOGGER",
             "name": "High Performance Data Logger",
             "description": "4U System with G28 CPU, multiple storage and network interfaces.",
             "config_json": json.dumps({

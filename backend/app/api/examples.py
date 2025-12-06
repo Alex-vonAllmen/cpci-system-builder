@@ -42,3 +42,42 @@ def delete_example(example_id: int, db: Session = Depends(get_db)):
     db.delete(db_example)
     db.commit()
     return {"ok": True}
+
+@router.get("/export", response_model=List[schemas.ExampleConfigExport])
+def export_examples(db: Session = Depends(get_db)):
+    return db.query(models.ExampleConfig).all()
+
+from app.schemas import schemas as global_schemas
+
+@router.post("/import", response_model=global_schemas.ImportSummary)
+def import_examples(examples: List[schemas.ExampleConfigImport], db: Session = Depends(get_db)):
+    summary = {"created": 0, "updated": 0, "failed": 0, "errors": []}
+
+    for ex_data in examples:
+        try:
+            # Upsert by example_number
+            existing = db.query(models.ExampleConfig).filter(models.ExampleConfig.example_number == ex_data.example_number).first()
+            
+            if existing:
+                existing.name = ex_data.name
+                existing.description = ex_data.description
+                existing.config_json = ex_data.config_json
+                existing.image_url = ex_data.image_url
+                summary["updated"] += 1
+            else:
+                new_example = models.ExampleConfig(**ex_data.model_dump())
+                db.add(new_example)
+                summary["created"] += 1
+                
+        except Exception as e:
+            summary["failed"] += 1
+            summary["errors"].append(f"{ex_data.example_number}: {str(e)}")
+            continue
+
+    try:
+        db.commit()
+    except Exception as e:
+        db.rollback()
+        raise HTTPException(status_code=500, detail=f"Database commit failed: {str(e)}")
+    
+    return summary

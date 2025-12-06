@@ -158,4 +158,5 @@ Proprietary - duagon AG
 
 ## Issues
 - PDF quote only contains single prices
+- Example admin panel has id and example number. Formatting still strange.
 - Rule with G239 in slot 2 does not work if G28 is in slot 1 and extends to slot 2 - SOLVED

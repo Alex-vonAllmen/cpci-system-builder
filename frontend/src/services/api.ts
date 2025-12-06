@@ -166,7 +166,7 @@ export const api = {
             return res.json();
         },
         create: async (data: any) => {
-            const res = await fetch(`${API_BASE_URL}/examples/`, {
+            const res = await fetch(`${API_BASE_URL}/api/examples/`, {
                 method: 'POST',
                 headers: getHeaders(),
                 body: JSON.stringify(data),
@@ -174,7 +174,7 @@ export const api = {
             return res.json();
         },
         update: async (id: number, data: any) => {
-            const res = await fetch(`${API_BASE_URL}/examples/${id}`, {
+            const res = await fetch(`${API_BASE_URL}/api/examples/${id}`, {
                 method: 'PUT',
                 headers: getHeaders(),
                 body: JSON.stringify(data),
@@ -182,10 +182,26 @@ export const api = {
             return res.json();
         },
         delete: async (id: number) => {
-            await fetch(`${API_BASE_URL}/examples/${id}`, {
+            await fetch(`${API_BASE_URL}/api/examples/${id}`, {
                 method: 'DELETE',
                 headers: getHeaders(),
             });
+        },
+        import: async (file: File) => {
+            const text = await file.text();
+            const json = JSON.parse(text);
+            const res = await fetch(`${API_BASE_URL}/api/examples/import`, {
+                method: 'POST',
+                headers: getHeaders(),
+                body: JSON.stringify(json),
+            });
+            return res.json();
+        },
+        export: async () => {
+            const res = await fetch(`${API_BASE_URL}/api/examples/export`, {
+                headers: getHeaders()
+            });
+            return res.blob();
         }
     },
     articles: {
