@@ -487,6 +487,7 @@ export function AdminPage() {
                                                     >
                                                         <option value="">Select Type...</option>
                                                         <option value="pcie_x1">PCIe x1</option>
+                                                        <option value="pcie_x2">PCIe x2</option>
                                                         <option value="pcie_x4">PCIe x4</option>
                                                         <option value="pcie_x8">PCIe x8</option>
                                                         <option value="pcie_x16">PCIe x16</option>
@@ -494,8 +495,10 @@ export function AdminPage() {
                                                         <option value="usb_2">USB 2.0</option>
                                                         <option value="usb_3">USB 3.0</option>
                                                         <option value="ethernet_1g">Ethernet 1G</option>
+                                                        <option value="ethernet_2_5g">Ethernet 2.5G</option>
                                                         <option value="ethernet_10g">Ethernet 10G</option>
                                                         <option value="serial">Serial (UART)</option>
+                                                        <option value="i2c">I2C</option>
                                                         <option value="gpio">GPIO</option>
                                                     </select>
                                                     <input
