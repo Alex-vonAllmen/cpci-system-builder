@@ -55,42 +55,43 @@ export const useConfigStore = create<ConfigState>((set) => ({
     })),
 
     setSlotCount: (count) => set((state) => {
-        // Re-generate slots when count changes, preserving existing selections if possible?
-        // For now, let's just resize the array and keep data where indices match
-        const newSlots = Array.from({ length: count }, (_, i) => {
-            const existingSlot = state.slots[i];
-            // Determine type based on new position logic if needed, but for now:
-            // If system slot is left, slot 1 (index 0) is system.
-            // If system slot is right, slot N (index count-1) is system.
+        // Reset Logic: Changing size clears everything
+        const newSlots: Slot[] = Array.from({ length: count }, (_, i) => ({
+            id: i + 1,
+            type: (state.systemSlotPosition === 'left' && i === 0) || (state.systemSlotPosition === 'right' && i === count - 1) ? 'system' : 'peripheral',
+            componentId: null,
+            width: 4,
+            blockedBy: null,
+        }));
 
-            let type: 'system' | 'peripheral' = 'peripheral';
-            if (state.systemSlotPosition === 'left' && i === 0) type = 'system';
-            if (state.systemSlotPosition === 'right' && i === count - 1) type = 'system';
-
-            return {
-                id: i + 1,
-                type,
-                componentId: existingSlot ? existingSlot.componentId : null,
-                width: 4,
-                blockedBy: null
-            };
-        });
-
-        return { slotCount: count, slots: newSlots };
+        return {
+            slotCount: count,
+            slots: newSlots,
+            chassisId: null,
+            chassisOptions: {},
+            psuId: null,
+            psuOptions: {}
+        };
     }),
 
     setSystemSlotPosition: (position) => set((state) => {
-        const newSlots = state.slots.map((slot, index) => {
-            let type: 'system' | 'peripheral' = 'peripheral';
-            if (position === 'left' && index === 0) type = 'system';
-            if (position === 'right' && index === state.slotCount - 1) type = 'system';
+        // Reset Logic: Changing position clears everything
+        const newSlots: Slot[] = Array.from({ length: state.slotCount }, (_, i) => ({
+            id: i + 1,
+            type: (position === 'left' && i === 0) || (position === 'right' && i === state.slotCount - 1) ? 'system' : 'peripheral',
+            componentId: null,
+            width: 4,
+            blockedBy: null,
+        }));
 
-            // If type changes, clear the component to avoid invalid configurations
-            const componentId = slot.type !== type ? null : slot.componentId;
-
-            return { ...slot, type, componentId, selectedOptions: slot.type !== type ? {} : slot.selectedOptions, blockedBy: null, width: 4 };
-        });
-        return { systemSlotPosition: position, slots: newSlots };
+        return {
+            systemSlotPosition: position,
+            slots: newSlots,
+            chassisId: null,
+            chassisOptions: {},
+            psuId: null,
+            psuOptions: {}
+        };
     }),
 
     setSlotComponent: (slotId, componentId) => set((state) => {
@@ -113,51 +114,62 @@ export const useConfigStore = create<ConfigState>((set) => ({
         // Calculate required slots (assuming 4HP per slot)
         const slotsNeeded = Math.ceil(width / 4);
 
-        // Check if subsequent slots are available (or already blocked by THIS slot, which is fine if we are just updating)
-        // But here we are setting a NEW component.
+        // Determine Direction:
+        // Standard: Expand Right (slots i to i + slotsNeeded - 1)
+        // Right-System: Expand Left (slots i - slotsNeeded + 1 to i)
+        const isRightSystem = state.systemSlotPosition === 'right' && slotId === state.slotCount;
 
-        // We need to check slots from slotId to slotId + slotsNeeded - 1
-        // They must be either empty, or occupied by THIS slot (if we are replacing?), or blocked by THIS slot.
-        // Actually, simpler: Check if they are free or blocked by *other* slots.
+        // Define relevant slots indices
+        // slotId is 1-based. Index is slotId - 1.
+        const originIndex = slotId - 1;
+        let startIndex = originIndex;
+        let endIndex = originIndex + slotsNeeded - 1;
 
-        // However, `setSlotComponent` implies we are putting a component here.
-        // We should clear any existing blocking from this slot first.
+        if (isRightSystem) {
+            startIndex = originIndex - slotsNeeded + 1;
+            endIndex = originIndex;
+        }
 
+        // Validation Loop
         let valid = true;
-        for (let i = 0; i < slotsNeeded; i++) {
-            const targetId = slotId + i;
-            const targetSlot = state.slots.find(s => s.id === targetId);
-            if (!targetSlot) { valid = false; break; } // Out of bounds
+        if (startIndex < 0 || endIndex >= state.slots.length) {
+            valid = false;
+        } else {
+            for (let i = startIndex; i <= endIndex; i++) {
+                // Skip the origin slot (we are overwriting it)
+                if (i === originIndex) continue;
 
-            // If it's the first slot (the one we are setting), it's fine (we are overwriting it)
-            if (i === 0) continue;
-
-            // For other slots, they must be empty or blocked by US (if we are re-selecting).
-            // But since we are setting a component, let's assume we want them to be effectively "available".
-            if (targetSlot.componentId && targetSlot.blockedBy !== slotId) { valid = false; break; }
-            if (targetSlot.blockedBy && targetSlot.blockedBy !== slotId) { valid = false; break; }
+                const targetSlot = state.slots[i];
+                // For other slots, they must be empty or blocked by US.
+                if (targetSlot.componentId && targetSlot.blockedBy !== slotId) { valid = false; break; }
+                if (targetSlot.blockedBy && targetSlot.blockedBy !== slotId) { valid = false; break; }
+            }
         }
 
         if (!valid) {
-            // TODO: Notify user? For now just don't set it or maybe set it but it will look broken?
-            // Better to return state as is if invalid?
-            // The UI should prevent this, but store should be safe.
             console.warn("Not enough space for component");
+            // In a real app we might want to return an error or toast here, 
+            // but the UI should ideally preventing clicking.
             return state;
         }
 
-        const newSlots = state.slots.map(s => {
-            // The main slot
+        const newSlots = state.slots.map((s, i) => {
+            // The Main Slot
             if (s.id === slotId) {
                 return { ...s, componentId, selectedOptions: {}, width, blockedBy: null };
             }
-            // The blocked slots
-            if (s.id > slotId && s.id < slotId + slotsNeeded) {
+
+            // The Blocked Slots
+            if (i >= startIndex && i <= endIndex && s.id !== slotId) {
                 return { ...s, componentId: null, selectedOptions: {}, width: 4, blockedBy: slotId };
             }
-            // If this slot WAS blocked by slotId but is no longer needed (e.g. component shrunk), unblock it
-            if (s.blockedBy === slotId && s.id >= slotId + slotsNeeded) {
-                return { ...s, blockedBy: null };
+
+            // Unblock if previously blocked by this slot but no longer needed
+            if (s.blockedBy === slotId) {
+                // If it's OUTSIDE the new range, unblock it
+                if (i < startIndex || i > endIndex) {
+                    return { ...s, blockedBy: null };
+                }
             }
             return s;
         });
@@ -188,35 +200,50 @@ export const useConfigStore = create<ConfigState>((set) => ({
 
         const slotsNeeded = Math.ceil(width / 4);
 
-        // Check validity (similar to setSlotComponent)
+        // Determine Direction (Right or Left)
+        const isRightSystem = state.systemSlotPosition === 'right' && slotId === state.slotCount;
+        const originIndex = slotId - 1;
+        let startIndex = originIndex;
+        let endIndex = originIndex + slotsNeeded - 1;
+
+        if (isRightSystem) {
+            startIndex = originIndex - slotsNeeded + 1;
+            endIndex = originIndex;
+        }
+
+        // Validity Check
         let valid = true;
-        for (let i = 1; i < slotsNeeded; i++) {
-            const targetId = slotId + i;
-            const targetSlot = state.slots.find(s => s.id === targetId);
-            if (!targetSlot) { valid = false; break; }
-            if (targetSlot.componentId && targetSlot.blockedBy !== slotId) { valid = false; break; }
-            if (targetSlot.blockedBy && targetSlot.blockedBy !== slotId) { valid = false; break; }
+        if (startIndex < 0 || endIndex >= state.slots.length) {
+            valid = false;
+        } else {
+            for (let i = startIndex; i <= endIndex; i++) {
+                if (i === originIndex) continue;
+                const targetSlot = state.slots[i];
+                if (targetSlot.componentId && targetSlot.blockedBy !== slotId) { valid = false; break; }
+                if (targetSlot.blockedBy && targetSlot.blockedBy !== slotId) { valid = false; break; }
+            }
         }
 
         if (!valid) {
             console.warn("Options increase width too much");
-            // Maybe we should still allow setting options but show error? 
-            // For now, let's allow it but it might overlap? No, better to block.
-            // Or better: The UI should have checked this.
             return state;
         }
 
-        const newSlots = state.slots.map(s => {
+        const newSlots = state.slots.map((s, i) => {
             if (s.id === slotId) {
                 return { ...s, selectedOptions: options, width };
             }
-            // The blocked slots
-            if (s.id > slotId && s.id < slotId + slotsNeeded) {
+
+            // Blocked slots
+            if (i >= startIndex && i <= endIndex && s.id !== slotId) {
                 return { ...s, componentId: null, selectedOptions: {}, width: 4, blockedBy: slotId };
             }
-            // Unblock if shrunk
-            if (s.blockedBy === slotId && s.id >= slotId + slotsNeeded) {
-                return { ...s, blockedBy: null };
+
+            // Unblock
+            if (s.blockedBy === slotId) {
+                if (i < startIndex || i > endIndex) {
+                    return { ...s, blockedBy: null };
+                }
             }
             return s;
         });
@@ -271,28 +298,52 @@ export const useConfigStore = create<ConfigState>((set) => ({
                 const slotsNeeded = Math.ceil(psu.width_hp / 4);
 
                 // Check if we can shift right
-                // We need 'slotsNeeded' empty slots at the end (or we push components out).
-                // User said: "it must be ensured that the shifting doesn't lead to components being shifted out".
-                // So we check the last 'slotsNeeded' slots. If they are occupied, we abort.
-                const lastSlots = newSlots.slice(-slotsNeeded);
-                const hasContent = lastSlots.some(s => s.componentId !== null);
+                // SMART SHIFT STRATEGY:
+                // We need `slotsNeeded` space at the front.
+                // We want to find `slotsNeeded` empty slots in the rack and "collapse" them to make room.
+                // We scan from Right to Left to find empty slots that are NOT the system slot (unless we move it? No).
 
-                if (hasContent) {
-                    console.warn("Cannot add PSU: Components would be pushed out of chassis.");
-                    // TODO: Notify user via toast or return error?
-                    // For now, we just don't apply the change.
-                    // But we might have already removed the old PSU! 
-                    // If we removed the old PSU, we should probably revert that?
-                    // Or maybe we treat "Change PSU" as atomic.
-                    // If we fail to add new one, we should probably keep the old one.
-                    // But here we already modified 'newSlots'.
-                    // So we should return 'state' (no change).
-                    return state;
+                let emptyIndicesFound: number[] = [];
+                for (let i = newSlots.length - 1; i >= 0; i--) {
+                    const s = newSlots[i];
+                    // Can we sacrifice this slot?
+                    // It must be:
+                    // 1. Empty (no component)
+                    // 2. Not blocked
+                    // 3. Not a System Slot (unless we want to shift system? Users usually want system preserved)
+                    if (s.componentId === null && s.blockedBy === null && s.type !== 'system') {
+                        emptyIndicesFound.push(i);
+                        if (emptyIndicesFound.length === slotsNeeded) break;
+                    }
                 }
 
-                // Shift right
-                // Take the first (N - slotsNeeded) slots
-                const shiftContent = newSlots.slice(0, slotCount - slotsNeeded);
+                if (emptyIndicesFound.length < slotsNeeded) {
+                    // Fallback to naive check (will fail if end is full, as observed)
+                    const lastSlots = newSlots.slice(-slotsNeeded);
+                    const hasContent = lastSlots.some(s => s.componentId !== null || s.type === 'system'); // Also protect system slot at end
+                    if (hasContent) {
+                        console.warn("Cannot add PSU: Not enough free space to shift.");
+                        return state;
+                    }
+                    // If naive check passes (end is empty), we just shift right and drop the end.
+                } else {
+                    // We found enough empty slots! 
+                    // Remove them from the array to "collapse" the rack
+                    // Sort indices descending to splice safely
+                    emptyIndicesFound.sort((a, b) => b - a);
+                    emptyIndicesFound.forEach(idx => {
+                        newSlots.splice(idx, 1);
+                    });
+                }
+
+                // If we didn't find specific empty slots but the generic check passed (in the 'fallback' block equivalent logic),
+                // we still need to reduce array size to (Total - SlotsNeeded) before prepending.
+                // If we used the 'splice' above, `newSlots.length` is now `Total - SlotsNeeded`.
+                // If we didn't (naive path), we need to slice.
+
+                if (newSlots.length > slotCount - slotsNeeded) {
+                    newSlots = newSlots.slice(0, slotCount - slotsNeeded);
+                }
 
                 // Create PSU slots
                 const psuSlots = Array.from({ length: slotsNeeded }, (_, i) => ({
@@ -305,7 +356,7 @@ export const useConfigStore = create<ConfigState>((set) => ({
                 }));
 
                 // Combine
-                newSlots = [...psuSlots, ...shiftContent];
+                newSlots = [...psuSlots, ...newSlots];
 
                 // Re-assign IDs
                 newSlots = newSlots.map((s, i) => ({
@@ -313,8 +364,71 @@ export const useConfigStore = create<ConfigState>((set) => ({
                     id: i + 1,
                     // blockedBy needs adjustment if we shifted?
                     // If a component was blocked by slot X, it is now blocked by slot X + slotsNeeded.
-                    blockedBy: s.type === 'psu' ? (i === 0 ? null : 1) : (s.blockedBy ? s.blockedBy + slotsNeeded : null)
+                    // Wait, if we spliced empty slots from the middle, the relative blocking might be preserved 
+                    // BUT the IDs changed.
+                    // If Slot 5 blocked Slot 6. And Slot 3 was removed.
+                    // Old Slot 5 becomes New Slot 4. Old Slot 6 becomes New Slot 5.
+                    // We need to re-calculate blocking or adjust IDs.
+
+                    // Actually, `blockedBy` relies on IDs.
+                    // If we shift, we must adjust `blockedBy`.
+                    // A simple shift (add to distinct start) means `+ slotsNeeded`.
+                    // But if we removed internal slots?
+
+                    // It's safer to Reset BlockedBy logic entirely or keep it relative?
+                    // Component at Index I blocked Index I+1.
+                    // After shift, checks:
+                    // If component at Index J was blocking Index J+1.
+                    // Since we only removed EMPTY slots, no blocked groups should be split.
+                    // So relative adjacency is preserved.
+                    // But the IDs stored in `blockedBy` (which are Slot IDs, aka Index+1) need update.
+
+                    // Complication: We are iterating `newSlots`.
+                    // We can't easily map old blockedBy ID to new ID without tracking moves.
+
+                    // STRATEGY: Clear `blockedBy` and Recalculate it from scratch based on `componentId` widths.
+                    // This is robust.
+                    blockedBy: s.type === 'psu' ? (i === 0 ? null : 1) : null
                 }));
+
+                // Recalculate blocking for all slots
+                for (let i = 0; i < newSlots.length; i++) {
+                    const slot = newSlots[i];
+                    if (slot.componentId && slot.type !== 'psu') {
+                        // We need to know the width. But the width property might be stale or just a number.
+                        // We should look up the product ideally, or trust `slot.width`.
+                        // `slot.width` should be preserved from the copy.
+                        const slotsRequired = Math.ceil(slot.width / 4);
+                        if (slotsRequired > 1) {
+                            // Block subsequent slots
+                            // IMPORTANT: Handle Leftward expansion (Right System Slot) if applicable?
+                            // But here we just re-apply blocking based on current position?
+                            // If it was Right System Slot, it is now... where?
+                            // If we have Right Alignment, `state.systemSlotPosition` is 'right'.
+                            // Is this slot currently the last one?
+
+                            // If systemSlotPosition is Right, the system slot is at `slotCount - 1`.
+                            // Wait, `slotCount` typically doesn't change.
+                            // Validating Position:
+                            const isRightSys = state.systemSlotPosition === 'right' && i === newSlots.length - 1 && slot.type === 'system';
+
+                            const startBlock = isRightSys ? i - slotsRequired + 1 : i + 1;
+                            const endBlock = isRightSys ? i - 1 : i + slotsRequired - 1;
+
+                            // Apply blocking
+                            // Note: Loop bounds depend on direction
+                            if (isRightSys) {
+                                for (let b = startBlock; b <= endBlock; b++) {
+                                    if (newSlots[b]) newSlots[b].blockedBy = slot.id;
+                                }
+                            } else {
+                                for (let b = startBlock; b <= endBlock; b++) {
+                                    if (newSlots[b]) newSlots[b].blockedBy = slot.id;
+                                }
+                            }
+                        }
+                    }
+                }
             }
         }
 

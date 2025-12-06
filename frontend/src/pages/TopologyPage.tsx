@@ -8,11 +8,12 @@ import { cn } from '../lib/utils';
 export function TopologyPage() {
     const {
         slotCount, systemSlotPosition, setSlotCount, setSystemSlotPosition,
-        examples, fetchExamples, importConfig
+        examples, fetchExamples, importConfig, fetchProducts
     } = useConfigStore();
 
     useEffect(() => {
         fetchExamples();
+        fetchProducts();
     }, []);
 
     console.log("Examples:", examples);
@@ -150,11 +151,11 @@ export function TopologyPage() {
                             <button
                                 key={example.id}
                                 onClick={() => handleSelectExample(example.config_json)}
-                                className="group text-left bg-white rounded-xl shadow-sm border border-slate-200 hover:border-duagon-blue hover:shadow-md transition-all overflow-hidden flex flex-col h-full"
+                                className="group text-left bg-white rounded-xl shadow-sm border border-slate-200 hover:shadow-md transition-all overflow-hidden flex flex-col h-full"
                             >
                                 {example.image_url ? (
-                                    <div className="h-40 bg-slate-100 overflow-hidden w-full">
-                                        <img src={example.image_url} alt={example.name} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" />
+                                    <div className="h-40 bg-slate-100 overflow-hidden w-full p-4">
+                                        <img src={example.image_url} alt={example.name} className="w-full h-full object-contain group-hover:scale-105 transition-transform duration-500" />
                                     </div>
                                 ) : (
                                     <div className="h-40 bg-slate-50 flex items-center justify-center text-slate-300 group-hover:bg-blue-50/50 transition-colors w-full">

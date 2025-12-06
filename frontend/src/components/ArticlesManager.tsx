@@ -253,10 +253,10 @@ export function ArticlesManager() {
                                     </td>
                                     <td className="px-6 py-3 text-right">
                                         <div className="flex justify-end gap-2">
-                                            <button onClick={() => handleEdit(article)} className="p-1 text-slate-400 hover:text-blue-600 transition-colors">
+                                            <button onClick={() => handleEdit(article)} className="p-1 text-duagon-blue hover:bg-blue-50 rounded-lg transition-colors">
                                                 <Edit size={18} />
                                             </button>
-                                            <button onClick={() => handleDelete(article.id)} className="p-1 text-slate-400 hover:text-red-600 transition-colors">
+                                            <button onClick={() => handleDelete(article.id)} className="p-1 text-red-600 hover:bg-red-50 rounded-lg transition-colors">
                                                 <Trash2 size={18} />
                                             </button>
                                         </div>

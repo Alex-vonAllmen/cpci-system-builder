@@ -254,22 +254,13 @@ export function AdminPage() {
                             Products
                         </button>
                         <button
-                            onClick={() => setActiveTab('settings')}
+                            onClick={() => setActiveTab('articles')}
                             className={cn(
                                 "px-4 py-2 text-sm font-medium rounded-md transition-colors",
-                                activeTab === 'settings' ? "bg-duagon-blue text-white" : "text-slate-600 hover:bg-slate-50"
+                                activeTab === 'articles' ? "bg-duagon-blue text-white" : "text-slate-600 hover:bg-slate-50"
                             )}
                         >
-                            Settings
-                        </button>
-                        <button
-                            onClick={() => setActiveTab('rules')}
-                            className={cn(
-                                "px-4 py-2 text-sm font-medium rounded-md transition-colors",
-                                activeTab === 'rules' ? "bg-duagon-blue text-white" : "text-slate-600 hover:bg-slate-50"
-                            )}
-                        >
-                            Rules
+                            Articles
                         </button>
                         <button
                             onClick={() => setActiveTab('examples')}
@@ -281,13 +272,22 @@ export function AdminPage() {
                             Examples
                         </button>
                         <button
-                            onClick={() => setActiveTab('articles')}
+                            onClick={() => setActiveTab('rules')}
                             className={cn(
                                 "px-4 py-2 text-sm font-medium rounded-md transition-colors",
-                                activeTab === 'articles' ? "bg-duagon-blue text-white" : "text-slate-600 hover:bg-slate-50"
+                                activeTab === 'rules' ? "bg-duagon-blue text-white" : "text-slate-600 hover:bg-slate-50"
                             )}
                         >
-                            Articles
+                            Rules
+                        </button>
+                        <button
+                            onClick={() => setActiveTab('settings')}
+                            className={cn(
+                                "px-4 py-2 text-sm font-medium rounded-md transition-colors",
+                                activeTab === 'settings' ? "bg-duagon-blue text-white" : "text-slate-600 hover:bg-slate-50"
+                            )}
+                        >
+                            Settings
                         </button>
                     </div>
                 </div>
@@ -1005,7 +1005,7 @@ function RulesManager() {
                                     <td className="px-6 py-4 flex gap-2">
                                         <button
                                             onClick={() => handleEditRule(rule)}
-                                            className="p-1 text-blue-600 hover:bg-blue-50 rounded-lg transition-colors"
+                                            className="p-1 text-duagon-blue hover:bg-blue-50 rounded-lg transition-colors"
                                             title="Edit Rule"
                                         >
                                             <Edit size={18} />
