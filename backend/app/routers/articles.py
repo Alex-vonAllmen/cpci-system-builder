@@ -80,42 +80,68 @@ def delete_article(article_id: int, db: Session = Depends(get_db)):
     db.commit()
     return {"ok": True}
 
-@router.post("/import", response_model=List[schemas.Article])
+@router.post("/import", response_model=schemas.ImportSummary)
 def import_articles(articles: List[schemas.ArticleImport], db: Session = Depends(get_db)):
-    new_articles = []
-    for a_data in articles:
-        # Check if exists by number? if id is provided update?
-        # Simple Logic: If ID provided, update. If not, create (or update by number?)
-        
-        # Validation checks omitted for brevity but should exist
-        
-        if a_data.id:
-            db_article = db.query(models.Article).filter(models.Article.id == a_data.id).first()
-            if db_article:
-                db_article.article_number = a_data.article_number
-                db_article.product_id = a_data.product_id
-                db_article.selected_options = a_data.selected_options
-                new_articles.append(db_article)
-                continue
-        
-        # Check by article number
-        existing = db.query(models.Article).filter(models.Article.article_number == a_data.article_number).first()
-        if existing:
-            existing.product_id = a_data.product_id
-            existing.selected_options = a_data.selected_options
-            new_articles.append(existing)
-        else:
-            new_article = models.Article(
-                article_number=a_data.article_number,
-                product_id=a_data.product_id,
-                selected_options=a_data.selected_options
-            )
-            db.add(new_article)
-            new_articles.append(new_article)
+    summary = {"created": 0, "updated": 0, "failed": 0, "errors": []}
     
-    db.commit()
-    return new_articles
+    # Validation Helper (Modifying to raise standard Exception we can catch specifically, or just use general)
+    def validate_article_data(article_data: schemas.ArticleBase):
+        product = db.query(models.Product).filter(models.Product.id == article_data.product_id).first()
+        if not product:
+            raise ValueError(f"Product {article_data.product_id} not found")
+        
+        if product.options:
+            for opt_id, opt_val in article_data.selected_options.items():
+                opt_def = next((o for o in product.options if o['id'] == opt_id), None)
+                if not opt_def:
+                     raise ValueError(f"Invalid option ID {opt_id}")
+                
+                if opt_def['type'] == 'select':
+                     # Relaxed Validation: Allow False (boolean) as "Not Selected" / "None"
+                     if opt_val is False:
+                         continue
 
-@router.get("/export", response_model=List[schemas.Article])
+                     valid_values = [c['value'] for c in opt_def['choices']]
+                     if opt_val not in valid_values:
+                          raise ValueError(f"Invalid value '{opt_val}' for option '{opt_id}'")
+
+    # Process
+    for a_data in articles:
+        try:
+            # 1. Validate
+            validate_article_data(a_data)
+            
+            # 2. Upsert
+            existing = db.query(models.Article).filter(models.Article.article_number == a_data.article_number).first()
+            if existing:
+                # Update
+                existing.product_id = a_data.product_id
+                existing.selected_options = a_data.selected_options
+                summary["updated"] += 1
+            else:
+                # Create
+                new_article = models.Article(
+                    article_number=a_data.article_number,
+                    product_id=a_data.product_id,
+                    selected_options=a_data.selected_options
+                )
+                db.add(new_article)
+                summary["created"] += 1
+                
+        except Exception as e:
+            summary["failed"] += 1
+            summary["errors"].append(f"{a_data.article_number}: {str(e)}")
+            continue
+    
+    try:
+        db.commit()
+    except Exception as e:
+        # If commit fails (rare integrity error?), rollback
+        db.rollback()
+        raise HTTPException(status_code=500, detail=f"Database commit failed: {str(e)}")
+        
+    return summary
+
+@router.get("/export", response_model=List[schemas.ArticleExport])
 def export_articles(db: Session = Depends(get_db)):
     return db.query(models.Article).all()

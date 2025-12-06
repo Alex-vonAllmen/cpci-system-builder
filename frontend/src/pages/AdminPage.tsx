@@ -4,6 +4,7 @@ import { SubConfigModal } from '../components/SubConfigModal';
 import { ExamplesManager } from '../components/ExamplesManager';
 import { ArticlesManager } from '../components/ArticlesManager';
 import { useToast } from '../components/ui/Toast'; // Corrected path for useToast
+import { ImportResultModal } from '../components/ImportResultModal';
 import { Plus, Trash2, Edit, Download, Upload } from 'lucide-react';
 import { cn } from '../lib/utils';
 
@@ -750,35 +751,11 @@ export function AdminPage() {
             </SubConfigModal>
 
             {/* Import Result Modal */}
-            <SubConfigModal
+            <ImportResultModal
                 isOpen={!!importResult}
                 onClose={() => setImportResult(null)}
-                onSave={() => setImportResult(null)}
-                title="Import Successful"
-                saveLabel="OK"
-            >
-                <div className="space-y-4">
-                    <div className="flex items-center gap-3 text-green-600 bg-green-50 p-4 rounded-lg">
-                        <div className="bg-green-100 p-2 rounded-full">
-                            <Upload size={24} />
-                        </div>
-                        <div>
-                            <h4 className="font-bold">Import Complete</h4>
-                            <p className="text-sm text-green-800">The product data has been successfully imported.</p>
-                        </div>
-                    </div>
-                    <div className="grid grid-cols-2 gap-4">
-                        <div className="bg-slate-50 p-4 rounded-lg text-center border border-slate-200">
-                            <div className="text-3xl font-bold text-slate-900">{importResult?.added}</div>
-                            <div className="text-sm text-slate-500 font-medium">New Products Added</div>
-                        </div>
-                        <div className="bg-slate-50 p-4 rounded-lg text-center border border-slate-200">
-                            <div className="text-3xl font-bold text-slate-900">{importResult?.updated}</div>
-                            <div className="text-sm text-slate-500 font-medium">Products Updated</div>
-                        </div>
-                    </div>
-                </div>
-            </SubConfigModal>
+                results={importResult ? { created: importResult.added, updated: importResult.updated } : null}
+            />
         </div>
     );
 }
