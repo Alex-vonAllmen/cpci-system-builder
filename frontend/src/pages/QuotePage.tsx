@@ -333,29 +333,55 @@ export function QuotePage() {
         doc.text(`Date: ${new Date().toLocaleDateString()}`, 14, 30);
 
         const tableData = selectedItems.map(item => {
-            const unitTotal = calcItemUnitPrice(item, prototypeQtyNum);
-            let connectorsStr = item.product.type === 'backplane' ? 'See Config' : (item.product.connectors || []).join(', ');
+            const unitTotalProto = calcItemUnitPrice(item, prototypeQtyNum);
+            const unitTotalSeries = calcItemUnitPrice(item, seriesQtyNum);
+
             const article = findMatchingArticle(item.product.id, item.options);
             const partNumber = article ? article.article_number : item.product.id;
-            const description = article ? `${item.product.name} (Article Match)` : item.product.name;
+            const productName = article ? `${item.product.name}\n${partNumber} (Matched)` : `${item.product.name}\n${partNumber}`;
+
+            // Format Options for PDF
+            let optionsStr = '';
+            if (item.product.options && item.options) {
+                const parts: string[] = [];
+                Object.entries(item.options).forEach(([optId, optVal]) => {
+                    const optDef = (item.product.options as any[]).find((o: any) => o.id === optId);
+                    if (optDef) {
+                        if ((optDef.type === 'boolean' && optVal) || (optDef.type === 'select' && optVal)) {
+                            let displayVal = optVal;
+                            if (optDef.type === 'boolean') displayVal = "Enabled";
+                            else {
+                                const choice = optDef.choices.find((c: any) => c.value === optVal);
+                                if (choice) displayVal = choice.label;
+                            }
+                            parts.push(`${optDef.label}: ${displayVal}`);
+                        }
+                    }
+                });
+                optionsStr = parts.join(', ');
+            }
 
             return [
-                item.slotLabel,
-                partNumber,
-                description,
-                connectorsStr,
-                item.product.type === 'backplane' ? '-' : `${item.product.widthHp}HP`,
+                item.slotLabel || '',
                 item.product.type,
-                `€${unitTotal.toLocaleString()}`
+                productName,
+                optionsStr,
+                `Series: €${unitTotalSeries.toLocaleString()}\nProto: €${unitTotalProto.toLocaleString()}`
             ];
         });
 
         autoTable(doc, {
-            head: [['Slot', 'Part Number', 'Description', 'Connectors', 'Width', 'Type', 'Unit Price']],
+            head: [['Slot', 'Type', 'Product', 'Configuration', 'Price']],
             body: tableData,
             startY: 40,
-            styles: { fontSize: 8 },
-            columnStyles: { 2: { cellWidth: 40 }, 3: { cellWidth: 20 } }
+            styles: { fontSize: 8, cellPadding: 2 },
+            columnStyles: {
+                0: { cellWidth: 15 }, // Slot
+                1: { cellWidth: 20 }, // Type
+                2: { cellWidth: 50 }, // Product
+                3: { cellWidth: 'auto' }, // Config
+                4: { cellWidth: 30, halign: 'right' } // Price
+            }
         });
 
         const finalY = (doc as any).lastAutoTable.finalY + 10;
@@ -560,23 +586,25 @@ export function QuotePage() {
                         <div className="p-8 text-center text-slate-500">No components selected.</div>
                     ) : (
                         <div className="divide-y divide-slate-100">
-                            {/* BOM Header Row ?? Maybe just list items cleanly */}
-                            <div className="bg-slate-50/50 px-6 py-2 text-xs font-semibold text-slate-500 flex gap-4 uppercase tracking-wider">
+                            {/* BOM Header Row - 5 Columns */}
+                            <div className="bg-slate-50/50 px-6 py-2 text-xs font-semibold text-slate-500 flex gap-4 uppercase tracking-wider items-center">
                                 <span className="w-16">Slot</span>
-                                <span className="flex-1">Description / Part Number</span>
-                                <span className="w-32 text-right">Price (Series)</span>
+                                <span className="w-28">Type</span>
+                                <span className="w-64">Product</span>
+                                <span className="flex-1">Description / Configuration</span>
+                                <span className="w-32 text-right">Price</span>
                             </div>
 
                             {selectedItems.map((item, idx) => {
                                 const unitPriceProto = calcItemUnitPrice(item, prototypeQtyNum);
                                 const unitPriceSeries = calcItemUnitPrice(item, seriesQtyNum);
                                 const article = findMatchingArticle(item.product.id, item.options);
-                                const displayArticleNumber = article ? article.article_number : `${item.product.id}-xx`;
+                                const displayArticleNumber = article ? article.article_number : `${item.product.id}`;
 
                                 return (
                                     <div key={idx} className="px-6 py-4 hover:bg-slate-50 transition-colors">
-                                        <div className="flex justify-between items-start">
-                                            {/* Slot Area */}
+                                        <div className="flex gap-4 items-start">
+                                            {/* Col 1: Slot */}
                                             <div className="w-16 pt-1">
                                                 {item.slotLabel && (
                                                     <span className="text-slate-500 font-medium text-sm">
@@ -585,26 +613,61 @@ export function QuotePage() {
                                                 )}
                                             </div>
 
-                                            {/* Details Area */}
-                                            <div className="flex-1 grid grid-cols-1 md:grid-cols-2 gap-4">
-                                                {/* Top Row: Name & PN */}
-                                                <div>
-                                                    <div className="text-sm font-semibold text-slate-900">{item.product.name}</div>
-                                                    <div className="flex items-center gap-2 mt-1">
-                                                        <code className="text-xs text-duagon-blue bg-blue-50 px-1.5 py-0.5 rounded">{displayArticleNumber}</code>
-                                                        {article && <span className="text-[10px] text-green-600 flex items-center gap-1 font-medium"><CheckCircle size={10} /> Matched</span>}
-                                                    </div>
-                                                </div>
-                                                {/* Options / Proto Price hint */}
-                                                <div className="text-xs text-slate-500 md:text-right md:pr-4">
-                                                    Part No: {item.product.id}
-                                                    <div className="mt-1">Proto Unit: €{unitPriceProto.toLocaleString()}</div>
+                                            {/* Col 2: Type */}
+                                            <div className="w-28 pt-1">
+                                                <span className="text-xs font-bold text-slate-500 bg-slate-100 px-2 py-1 rounded uppercase">
+                                                    {item.product.type === 'miscellaneous' ? 'Misc' : item.product.type}
+                                                </span>
+                                            </div>
+
+                                            {/* Col 3: Product Name & Article Check */}
+                                            <div className="w-64">
+                                                <div className="text-sm font-semibold text-slate-900">{item.product.name}</div>
+                                                <div className="flex items-center gap-2 mt-1">
+                                                    <code className="text-xs text-duagon-blue bg-blue-50 px-1.5 py-0.5 rounded">{displayArticleNumber}</code>
+                                                    {article ? (
+                                                        <span className="text-[10px] text-green-600 flex items-center gap-1 font-medium"><CheckCircle size={10} /> Matched</span>
+                                                    ) : (
+                                                        <span className="text-[10px] text-slate-400 italic">Unmatched</span>
+                                                    )}
                                                 </div>
                                             </div>
 
-                                            {/* Price Area */}
+                                            {/* Col 4: Configuration / Options */}
+                                            <div className="flex-1">
+                                                <div className="text-sm text-slate-600 mb-2">{item.product.description}</div>
+                                                {item.product.options && item.options ? (
+                                                    <div className="flex flex-wrap gap-1">
+                                                        {Object.entries(item.options).map(([optId, optVal]) => {
+                                                            const optDef = (item.product.options as any[]).find((o: any) => o.id === optId);
+                                                            if (!optDef) return null;
+                                                            if (optDef.type === 'boolean' && !optVal) return null;
+                                                            if (optDef.type === 'select' && !optVal) return null;
+
+                                                            let displayValue = '';
+                                                            if (optDef.type === 'boolean') {
+                                                                displayValue = 'Enabled';
+                                                            } else {
+                                                                const choice = optDef.choices.find((c: any) => c.value === optVal);
+                                                                displayValue = choice ? choice.label : optVal;
+                                                            }
+
+                                                            return (
+                                                                <div key={optId} className="text-xs text-slate-600 bg-slate-100 px-2 py-0.5 rounded border border-slate-200">
+                                                                    <span className="font-semibold">{optDef.label}:</span> {displayValue}
+                                                                </div>
+                                                            );
+                                                        })}
+                                                    </div>
+                                                ) : (
+                                                    <span className="text-xs text-slate-400">-</span>
+                                                )}
+                                            </div>
+
+                                            {/* Col 5: Price */}
                                             <div className="w-32 text-right">
                                                 <div className="text-sm font-bold text-slate-700">€{unitPriceSeries.toLocaleString()}</div>
+                                                <div className="text-xs text-slate-400 mt-1">€{unitPriceProto.toLocaleString()} (Proto)</div>
                                             </div>
                                         </div>
                                     </div>
