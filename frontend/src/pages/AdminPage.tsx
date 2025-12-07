@@ -333,7 +333,7 @@ export function AdminPage() {
                                 <h3 className="text-lg font-bold mb-4">{isEditing ? 'Edit Product' : 'New Product'}</h3>
                                 <form onSubmit={handleSaveProduct} className="grid grid-cols-2 gap-6">
                                     <div className="space-y-2">
-                                        <label className="text-sm font-medium text-slate-700">Part Number (ID)</label>
+                                        <label className="text-sm font-medium text-slate-700">Product ID</label>
                                         <input
                                             required
                                             disabled={isEditing}
@@ -643,7 +643,7 @@ export function AdminPage() {
                                     <div className="col-span-2 flex justify-end gap-2 mt-4">
                                         <button type="button" onClick={() => setIsCreating(false)} className="px-4 py-2 text-slate-600 hover:bg-slate-50 rounded-lg">Cancel</button>
                                         <button type="submit" className="px-4 py-2 bg-duagon-blue text-white rounded-lg hover:bg-duagon-blue/90">
-                                            {isEditing ? 'Update Product' : 'Create Product'}
+                                            {isEditing ? 'Save Product' : 'Create Product'}
                                         </button>
                                     </div>
                                 </form>
@@ -654,7 +654,7 @@ export function AdminPage() {
                             <table className="w-full text-left">
                                 <thead className="bg-slate-50 border-b border-slate-200">
                                     <tr>
-                                        <th className="px-6 py-3 text-sm font-medium text-slate-500">ID</th>
+                                        <th className="px-6 py-3 text-sm font-medium text-slate-500">Product ID</th>
                                         <th className="px-6 py-3 text-sm font-medium text-slate-500">Type</th>
                                         <th className="px-6 py-3 text-sm font-medium text-slate-500">Name</th>
                                         <th className="px-6 py-3 text-sm font-medium text-slate-500">Power</th>
@@ -952,7 +952,7 @@ function RulesManager() {
                         <div className="flex justify-end gap-2">
                             <button type="button" onClick={() => setIsCreating(false)} className="px-4 py-2 text-slate-600 hover:bg-slate-50 rounded-lg">Cancel</button>
                             <button type="submit" className="px-4 py-2 bg-duagon-blue text-white rounded-lg hover:bg-duagon-blue/90">
-                                {isEditing ? 'Update Rule' : 'Create Rule'}
+                                {isEditing ? 'Save Rule' : 'Create Rule'}
                             </button>
                         </div>
                     </form>

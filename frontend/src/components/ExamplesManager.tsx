@@ -251,7 +251,7 @@ export function ExamplesManager() {
                         <div className="flex justify-end gap-2">
                             <button type="button" onClick={() => setIsCreating(false)} className="px-4 py-2 text-slate-600 hover:bg-slate-50 rounded-lg">Cancel</button>
                             <button type="submit" className="px-4 py-2 bg-duagon-blue text-white rounded-lg hover:bg-duagon-blue/90">
-                                {isEditing ? 'Update Example' : 'Create Example'}
+                                {isEditing ? 'Save Example' : 'Create Example'}
                             </button>
                         </div>
                     </form>
@@ -262,8 +262,7 @@ export function ExamplesManager() {
                 <table className="w-full text-left">
                     <thead className="bg-slate-50 border-b border-slate-200">
                         <tr>
-                            <th className="px-6 py-3 text-sm font-medium text-slate-500">ID</th>
-                            <th className="px-6 py-3 text-sm font-medium text-slate-500">Ex. No</th>
+                            <th className="px-6 py-3 text-sm font-medium text-slate-500">Example Number</th>
                             <th className="px-6 py-3 text-sm font-medium text-slate-500">Name</th>
                             <th className="px-6 py-3 text-sm font-medium text-slate-500">Description</th>
                             <th className="px-6 py-3 text-sm font-medium text-slate-500">Actions</th>
@@ -271,14 +270,13 @@ export function ExamplesManager() {
                     </thead>
                     <tbody className="divide-y divide-slate-100">
                         {isLoading ? (
-                            <tr><td colSpan={5} className="p-8 text-center text-slate-500">Loading...</td></tr>
+                            <tr><td colSpan={4} className="p-8 text-center text-slate-500">Loading...</td></tr>
                         ) : examples.length === 0 ? (
-                            <tr><td colSpan={5} className="p-8 text-center text-slate-500">No examples found.</td></tr>
+                            <tr><td colSpan={4} className="p-8 text-center text-slate-500">No examples found.</td></tr>
                         ) : (
                             examples.map(example => (
                                 <tr key={example.id} className="hover:bg-slate-50">
-                                    <td className="px-6 py-4 font-mono text-sm">{example.id}</td>
-                                    <td className="px-6 py-4 font-mono text-sm text-blue-600 font-semibold">{example.example_number}</td>
+                                    <td className="px-6 py-4 font-mono text-sm text-slate-900">{example.example_number}</td>
                                     <td className="px-6 py-4 text-sm font-medium">{example.name}</td>
                                     <td className="px-6 py-4 text-sm text-slate-500">{example.description}</td>
                                     <td className="px-6 py-4 flex gap-2">

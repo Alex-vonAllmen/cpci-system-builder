@@ -291,8 +291,8 @@ export function ArticlesManager() {
                 isOpen={isCreating}
                 onClose={() => setIsCreating(false)}
                 onSave={handleSave}
-                title={editingArticle ? "Edit Article" : "Create New Article"}
-                saveLabel="Save Article"
+                title={editingArticle ? "Edit Article" : "Create Article"}
+                saveLabel={editingArticle ? "Save Article" : "Create Article"}
             >
                 <div className="space-y-4">
                     <div>
