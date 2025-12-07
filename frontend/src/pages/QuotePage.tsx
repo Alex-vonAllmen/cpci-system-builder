@@ -154,12 +154,16 @@ export function QuotePage() {
     const backplaneConnectors: Record<string, string[]> = {};
     sortedSlots.forEach(slot => {
         if (slot.type === 'psu') return;
+        if (slot.blockedBy) return; // Skip overriden slots
+        if (!slot.componentId) return; // Skip empty slots
+
+        // Check if component is a filler
+        const p = products.find((p: any) => p.id === slot.componentId);
+        if (!p || p.type === 'filler' || p.id === 'FILLER_4HP') return; // Skip fillers
+
         let connectors: string[] = ['P1'];
-        if (slot.componentId) {
-            const p = products.find((p: any) => p.id === slot.componentId);
-            if (p && p.connectors && p.connectors.length > 0) {
-                connectors = p.connectors;
-            }
+        if (p && p.connectors && p.connectors.length > 0) {
+            connectors = p.connectors;
         }
         if (!connectors.includes('P1')) connectors.push('P1');
         backplaneConnectors[`Slot ${slot.id}`] = connectors.sort();
@@ -342,7 +346,15 @@ export function QuotePage() {
 
             // Format Options for PDF
             let optionsStr = '';
-            if (item.product.options && item.options) {
+            if (item.type === 'backplane' && item.options) {
+                const lines: string[] = [];
+                Object.entries(item.options).forEach(([slotLbl, connectors]) => {
+                    if (Array.isArray(connectors) && connectors.length > 0) {
+                        lines.push(`${slotLbl}: ${connectors.join(', ')}`);
+                    }
+                });
+                optionsStr = lines.join('\n');
+            } else if (item.product.options && item.options) {
                 const parts: string[] = [];
                 Object.entries(item.options).forEach(([optId, optVal]) => {
                     const optDef = (item.product.options as any[]).find((o: any) => o.id === optId);
@@ -636,7 +648,15 @@ export function QuotePage() {
                                             {/* Col 4: Configuration / Options */}
                                             <div className="flex-1">
                                                 <div className="text-sm text-slate-600 mb-2">{item.product.description}</div>
-                                                {item.product.options && item.options ? (
+                                                {item.type === 'backplane' ? (
+                                                    <div className="flex flex-col gap-1 mt-1">
+                                                        {Object.entries(item.options).map(([slotLbl, connectors]: [string, any]) => (
+                                                            <div key={slotLbl} className="text-xs text-slate-600">
+                                                                <span className="font-semibold">{slotLbl}:</span> {Array.isArray(connectors) ? connectors.join(', ') : ''}
+                                                            </div>
+                                                        ))}
+                                                    </div>
+                                                ) : item.product.options && item.options ? (
                                                     <div className="flex flex-wrap gap-1">
                                                         {Object.entries(item.options).map(([optId, optVal]) => {
                                                             const optDef = (item.product.options as any[]).find((o: any) => o.id === optId);
