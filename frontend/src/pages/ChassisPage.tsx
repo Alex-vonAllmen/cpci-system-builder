@@ -23,6 +23,7 @@ export function ChassisPage() {
     const [configuringProduct, setConfiguringProduct] = useState<Product | null>(null);
     const [viewingProduct, setViewingProduct] = useState<Product | null>(null);
     const [tempOptions, setTempOptions] = useState<Record<string, any>>({});
+    const [isEditingExisting, setIsEditingExisting] = useState(false);
 
     // Calculate total power consumption
     // Calculate total power consumption (including options)
@@ -83,9 +84,10 @@ export function ChassisPage() {
         const isAlreadySelected = currentId === product.id;
 
         if (isAlreadySelected) {
-            // Unselect
-            if (type === 'chassis') setChassis(null);
-            else setPsu(null);
+            // Edit existing component - ALWAYS open modal to allow removal
+            setConfiguringProduct(product);
+            setIsEditingExisting(true);
+            setTempOptions(type === 'chassis' ? (savedChassisOptions || {}) : (savedPsuOptions || {}));
             return;
         }
 
@@ -105,6 +107,7 @@ export function ChassisPage() {
         if (product.options && product.options.length > 0) {
             // Open modal for configuration
             setConfiguringProduct(product);
+            setIsEditingExisting(false);
             // Initialize default options
             const defaults: Record<string, any> = {};
             product.options.forEach(opt => {
@@ -117,8 +120,8 @@ export function ChassisPage() {
                 toast.error(`Cannot select this component:\n\n${violations.join('\n')}`);
                 return;
             }
-            if (type === 'chassis') setChassis(product.id);
-            else setPsu(product.id);
+            if (type === 'chassis') setChassis(product.id, {}); // Pass empty options explicitly
+            else setPsu(product.id, {});
         }
     };
 
@@ -172,6 +175,11 @@ export function ChassisPage() {
                 isOpen={!!configuringProduct}
                 onClose={() => setConfiguringProduct(null)}
                 onSave={() => handleSaveConfiguration(tempOptions)}
+                onRemove={isEditingExisting ? () => {
+                    if (configuringProduct?.type === 'chassis') setChassis(null);
+                    else if (configuringProduct?.type === 'psu') setPsu(null);
+                    setConfiguringProduct(null);
+                } : undefined}
                 title={`Configure ${configuringProduct?.name}`}
             >
                 <div className="space-y-6">
