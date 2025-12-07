@@ -1,9 +1,8 @@
 import { useState, useEffect } from 'react';
 import { api } from '../services/api';
 import { useToast } from './ui/Toast';
-import { Trash2, Plus, Download, Upload, Search, Edit } from 'lucide-react';
+import { Plus, Trash2, Edit, Download, Upload, Search } from 'lucide-react';
 import { SubConfigModal } from './SubConfigModal';
-import { ImportResultModal } from './ImportResultModal';
 
 interface Article {
     id: number;
@@ -13,20 +12,21 @@ interface Article {
 }
 
 export function ArticlesManager() {
-    const [articles, setArticles] = useState<any[]>([]);
-    const [searchTerm, setSearchTerm] = useState('');
-    const [isLoading, setIsLoading] = useState(false);
-    const [isCreating, setIsCreating] = useState(false);
+    const [articles, setArticles] = useState<Article[]>([]);
     const [products, setProducts] = useState<any[]>([]);
+    const [isLoading, setIsLoading] = useState(false);
     const [editingArticle, setEditingArticle] = useState<Article | null>(null);
-    const [importResult, setImportResult] = useState<{ created: number, updated: number, failed: number } | null>(null);
+    const [isCreating, setIsCreating] = useState(false);
+    const [searchTerm, setSearchTerm] = useState('');
 
-    const toast = useToast();
+    // Form State
     const [formData, setFormData] = useState<Partial<Article>>({
         article_number: '',
         product_id: '',
         selected_options: {}
     });
+
+    const toast = useToast();
 
     useEffect(() => {
         loadData();
@@ -123,30 +123,12 @@ export function ArticlesManager() {
         const file = e.target.files?.[0];
         if (!file) return;
         try {
-            const summary = await api.articles.import(file);
-
-            // Check and set state for modal
-            if (summary && typeof summary.created === 'number') {
-                setImportResult({
-                    created: summary.created,
-                    updated: summary.updated,
-                    failed: summary.failed
-                });
-
-                // User Request: Add debugging info to console
-                if (summary.failed > 0 && summary.errors) {
-                    console.group("Import Failures Debug Info");
-                    console.warn(`Encountered ${summary.failed} failures during import.`);
-                    console.table(summary.errors); // Nicely formatted table of errors
-                    console.groupEnd();
-                }
-            } else {
-                toast.success("Import successful.");
-            }
+            await api.articles.import(file);
+            toast.success("Import successful. Reloading...");
             loadData();
         } catch (error) {
             console.error("Import failed", error);
-            toast.error("Import failed check console or network tab.");
+            toast.error("Import failed.");
         }
         e.target.value = ''; // Reset input
     };
@@ -291,8 +273,8 @@ export function ArticlesManager() {
                 isOpen={isCreating}
                 onClose={() => setIsCreating(false)}
                 onSave={handleSave}
-                title={editingArticle ? "Edit Article" : "Create Article"}
-                saveLabel={editingArticle ? "Save Article" : "Create Article"}
+                title={editingArticle ? "Edit Article" : "Create New Article"}
+                saveLabel="Save Article"
             >
                 <div className="space-y-4">
                     <div>
@@ -326,13 +308,6 @@ export function ArticlesManager() {
                     {renderOptionInputs()}
                 </div>
             </SubConfigModal>
-            {/* Import Result Modal */}
-            <ImportResultModal
-                isOpen={!!importResult}
-                onClose={() => setImportResult(null)}
-                results={importResult}
-                title="Article Import Result"
-            />
         </div>
     );
 }

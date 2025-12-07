@@ -4,7 +4,6 @@ import { SubConfigModal } from '../components/SubConfigModal';
 import { ExamplesManager } from '../components/ExamplesManager';
 import { ArticlesManager } from '../components/ArticlesManager';
 import { useToast } from '../components/ui/Toast'; // Corrected path for useToast
-import { ImportResultModal } from '../components/ImportResultModal';
 import { Plus, Trash2, Edit, Download, Upload } from 'lucide-react';
 import { cn } from '../lib/utils';
 
@@ -333,7 +332,7 @@ export function AdminPage() {
                                 <h3 className="text-lg font-bold mb-4">{isEditing ? 'Edit Product' : 'New Product'}</h3>
                                 <form onSubmit={handleSaveProduct} className="grid grid-cols-2 gap-6">
                                     <div className="space-y-2">
-                                        <label className="text-sm font-medium text-slate-700">Product ID</label>
+                                        <label className="text-sm font-medium text-slate-700">Part Number (ID)</label>
                                         <input
                                             required
                                             disabled={isEditing}
@@ -487,7 +486,6 @@ export function AdminPage() {
                                                     >
                                                         <option value="">Select Type...</option>
                                                         <option value="pcie_x1">PCIe x1</option>
-                                                        <option value="pcie_x2">PCIe x2</option>
                                                         <option value="pcie_x4">PCIe x4</option>
                                                         <option value="pcie_x8">PCIe x8</option>
                                                         <option value="pcie_x16">PCIe x16</option>
@@ -495,10 +493,8 @@ export function AdminPage() {
                                                         <option value="usb_2">USB 2.0</option>
                                                         <option value="usb_3">USB 3.0</option>
                                                         <option value="ethernet_1g">Ethernet 1G</option>
-                                                        <option value="ethernet_2_5g">Ethernet 2.5G</option>
                                                         <option value="ethernet_10g">Ethernet 10G</option>
                                                         <option value="serial">Serial (UART)</option>
-                                                        <option value="i2c">I2C</option>
                                                         <option value="gpio">GPIO</option>
                                                     </select>
                                                     <input
@@ -643,7 +639,7 @@ export function AdminPage() {
                                     <div className="col-span-2 flex justify-end gap-2 mt-4">
                                         <button type="button" onClick={() => setIsCreating(false)} className="px-4 py-2 text-slate-600 hover:bg-slate-50 rounded-lg">Cancel</button>
                                         <button type="submit" className="px-4 py-2 bg-duagon-blue text-white rounded-lg hover:bg-duagon-blue/90">
-                                            {isEditing ? 'Save Product' : 'Create Product'}
+                                            {isEditing ? 'Update Product' : 'Create Product'}
                                         </button>
                                     </div>
                                 </form>
@@ -654,7 +650,7 @@ export function AdminPage() {
                             <table className="w-full text-left">
                                 <thead className="bg-slate-50 border-b border-slate-200">
                                     <tr>
-                                        <th className="px-6 py-3 text-sm font-medium text-slate-500">Product ID</th>
+                                        <th className="px-6 py-3 text-sm font-medium text-slate-500">ID</th>
                                         <th className="px-6 py-3 text-sm font-medium text-slate-500">Type</th>
                                         <th className="px-6 py-3 text-sm font-medium text-slate-500">Name</th>
                                         <th className="px-6 py-3 text-sm font-medium text-slate-500">Power</th>
@@ -754,11 +750,35 @@ export function AdminPage() {
             </SubConfigModal>
 
             {/* Import Result Modal */}
-            <ImportResultModal
+            <SubConfigModal
                 isOpen={!!importResult}
                 onClose={() => setImportResult(null)}
-                results={importResult ? { created: importResult.added, updated: importResult.updated } : null}
-            />
+                onSave={() => setImportResult(null)}
+                title="Import Successful"
+                saveLabel="OK"
+            >
+                <div className="space-y-4">
+                    <div className="flex items-center gap-3 text-green-600 bg-green-50 p-4 rounded-lg">
+                        <div className="bg-green-100 p-2 rounded-full">
+                            <Upload size={24} />
+                        </div>
+                        <div>
+                            <h4 className="font-bold">Import Complete</h4>
+                            <p className="text-sm text-green-800">The product data has been successfully imported.</p>
+                        </div>
+                    </div>
+                    <div className="grid grid-cols-2 gap-4">
+                        <div className="bg-slate-50 p-4 rounded-lg text-center border border-slate-200">
+                            <div className="text-3xl font-bold text-slate-900">{importResult?.added}</div>
+                            <div className="text-sm text-slate-500 font-medium">New Products Added</div>
+                        </div>
+                        <div className="bg-slate-50 p-4 rounded-lg text-center border border-slate-200">
+                            <div className="text-3xl font-bold text-slate-900">{importResult?.updated}</div>
+                            <div className="text-sm text-slate-500 font-medium">Products Updated</div>
+                        </div>
+                    </div>
+                </div>
+            </SubConfigModal>
         </div>
     );
 }
@@ -952,7 +972,7 @@ function RulesManager() {
                         <div className="flex justify-end gap-2">
                             <button type="button" onClick={() => setIsCreating(false)} className="px-4 py-2 text-slate-600 hover:bg-slate-50 rounded-lg">Cancel</button>
                             <button type="submit" className="px-4 py-2 bg-duagon-blue text-white rounded-lg hover:bg-duagon-blue/90">
-                                {isEditing ? 'Save Rule' : 'Create Rule'}
+                                {isEditing ? 'Update Rule' : 'Create Rule'}
                             </button>
                         </div>
                     </form>

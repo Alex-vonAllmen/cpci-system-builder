@@ -110,13 +110,4 @@ class Article(ArticleBase):
         from_attributes = True
 
 class ArticleImport(ArticleBase):
-    pass
-
-class ArticleExport(ArticleBase):
-    pass
-
-class ImportSummary(BaseModel):
-    created: int
-    updated: int
-    failed: int
-    errors: List[str]
+    id: Optional[int] = None

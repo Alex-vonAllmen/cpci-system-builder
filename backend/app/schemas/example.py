@@ -2,7 +2,6 @@ from pydantic import BaseModel
 from typing import Optional
 
 class ExampleConfigBase(BaseModel):
-    example_number: str
     name: str
     description: str
     config_json: str
@@ -19,9 +18,3 @@ class ExampleConfig(ExampleConfigBase):
 
     class Config:
         from_attributes = True
-
-class ExampleConfigImport(ExampleConfigBase):
-    pass
-
-class ExampleConfigExport(ExampleConfigBase):
-    pass

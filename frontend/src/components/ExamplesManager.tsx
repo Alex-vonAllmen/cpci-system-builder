@@ -1,9 +1,8 @@
 import { useState, useEffect } from 'react';
 import { api } from '../services/api';
 import { SubConfigModal } from './SubConfigModal';
-import { ImportResultModal } from './ImportResultModal';
 import { useToast } from './ui/Toast';
-import { Plus, Trash2, Edit, Download, Upload } from 'lucide-react';
+import { Plus, Trash2, Edit } from 'lucide-react';
 
 export function ExamplesManager() {
     const [examples, setExamples] = useState<any[]>([]);
@@ -11,7 +10,6 @@ export function ExamplesManager() {
     const [isCreating, setIsCreating] = useState(false);
     const [newExample, setNewExample] = useState({
         id: 0,
-        example_number: '',
         name: '',
         description: '',
         config_json: '',
@@ -20,7 +18,6 @@ export function ExamplesManager() {
 
     const [isEditing, setIsEditing] = useState(false);
     const [deleteConfirmation, setDeleteConfirmation] = useState<{ id: number, name: string } | null>(null);
-    const [importResult, setImportResult] = useState<{ created: number, updated: number, failed: number } | null>(null);
     const toast = useToast();
 
     const loadExamples = async () => {
@@ -48,7 +45,6 @@ export function ExamplesManager() {
             JSON.parse(newExample.config_json);
 
             const exampleData = {
-                example_number: newExample.example_number,
                 name: newExample.name,
                 description: newExample.description,
                 config_json: newExample.config_json,
@@ -68,7 +64,6 @@ export function ExamplesManager() {
             loadExamples();
             setNewExample({
                 id: 0,
-                example_number: '',
                 name: '',
                 description: '',
                 config_json: '',
@@ -83,10 +78,9 @@ export function ExamplesManager() {
     const handleEditExample = (example: any) => {
         setNewExample({
             id: example.id,
-            example_number: example.example_number || '', // Handle legacy/missing data
             name: example.name,
             description: example.description,
-            config_json: example.config_json,
+            config_json: example.config_json, // It's stored as string in DB? Yes, Text column.
             image_url: example.image_url || ''
         });
         setIsEditing(true);
@@ -105,77 +99,15 @@ export function ExamplesManager() {
         }
     };
 
-    const handleExport = async () => {
-        try {
-            const blob = await api.examples.export();
-            const url = window.URL.createObjectURL(blob);
-            const a = document.createElement('a');
-            a.href = url;
-            a.download = `examples_export_${new Date().toISOString().split('T')[0]}.json`;
-            document.body.appendChild(a);
-            a.click();
-            document.body.removeChild(a);
-            toast.success("Export started.");
-        } catch (error) {
-            console.error("Export failed", error);
-            toast.error("Export failed.");
-        }
-    };
-
-    const handleImport = async (e: React.ChangeEvent<HTMLInputElement>) => {
-        const file = e.target.files?.[0];
-        if (!file) return;
-        try {
-            const summary = await api.examples.import(file);
-
-            // Check and set state for modal
-            if (summary && typeof summary.created === 'number') {
-                setImportResult({
-                    created: summary.created,
-                    updated: summary.updated,
-                    failed: summary.failed
-                });
-
-                // Debugging info
-                if (summary.failed > 0 && summary.errors) {
-                    console.group("Example Import Failures Debug Info");
-                    console.warn(`Encountered ${summary.failed} failures during import.`);
-                    console.table(summary.errors);
-                    console.groupEnd();
-                }
-            } else {
-                toast.success("Import successful.");
-            }
-            loadExamples();
-        } catch (error) {
-            console.error("Import failed", error);
-            toast.error("Import failed check console or network tab.");
-        }
-        e.target.value = ''; // Reset input
-    };
-
     return (
         <div className="space-y-6">
             <div className="flex justify-between items-center">
                 <h2 className="text-xl font-bold text-slate-900">Example Configurations</h2>
                 <div className="flex gap-2">
                     <button
-                        onClick={handleExport}
-                        className="flex items-center gap-2 bg-white border border-slate-300 text-slate-700 px-4 py-2 rounded-lg hover:bg-slate-50 transition-colors"
-                    >
-                        <Download size={18} />
-                        Export
-                    </button>
-                    <label className="flex items-center gap-2 bg-white border border-slate-300 text-slate-700 px-4 py-2 rounded-lg hover:bg-slate-50 transition-colors cursor-pointer">
-                        <Upload size={18} />
-                        Import
-                        <input type="file" accept=".json" className="hidden" onChange={handleImport} />
-                    </label>
-                    <button
                         onClick={() => {
                             setNewExample({
                                 id: 0,
-                                example_number: '',
                                 name: '',
                                 description: '',
                                 config_json: '',
@@ -196,16 +128,6 @@ export function ExamplesManager() {
                 <div className="bg-white p-6 rounded-xl shadow-sm border border-slate-200 animate-in fade-in slide-in-from-top-4">
                     <h3 className="text-lg font-bold mb-4">{isEditing ? 'Edit Example' : 'New Example'}</h3>
                     <form onSubmit={handleSaveExample} className="space-y-4">
-                        <div className="space-y-2">
-                            <label className="text-sm font-medium text-slate-700">Example Number (ID)</label>
-                            <input
-                                required
-                                className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none"
-                                value={newExample.example_number}
-                                onChange={e => setNewExample({ ...newExample, example_number: e.target.value })}
-                                placeholder="e.g. EX-001"
-                            />
-                        </div>
                         <div className="space-y-2">
                             <label className="text-sm font-medium text-slate-700">Name</label>
                             <input
@@ -251,7 +173,7 @@ export function ExamplesManager() {
                         <div className="flex justify-end gap-2">
                             <button type="button" onClick={() => setIsCreating(false)} className="px-4 py-2 text-slate-600 hover:bg-slate-50 rounded-lg">Cancel</button>
                             <button type="submit" className="px-4 py-2 bg-duagon-blue text-white rounded-lg hover:bg-duagon-blue/90">
-                                {isEditing ? 'Save Example' : 'Create Example'}
+                                {isEditing ? 'Update Example' : 'Create Example'}
                             </button>
                         </div>
                     </form>
@@ -262,7 +184,7 @@ export function ExamplesManager() {
                 <table className="w-full text-left">
                     <thead className="bg-slate-50 border-b border-slate-200">
                         <tr>
-                            <th className="px-6 py-3 text-sm font-medium text-slate-500">Example Number</th>
+                            <th className="px-6 py-3 text-sm font-medium text-slate-500">ID</th>
                             <th className="px-6 py-3 text-sm font-medium text-slate-500">Name</th>
                             <th className="px-6 py-3 text-sm font-medium text-slate-500">Description</th>
                             <th className="px-6 py-3 text-sm font-medium text-slate-500">Actions</th>
@@ -276,7 +198,7 @@ export function ExamplesManager() {
                         ) : (
                             examples.map(example => (
                                 <tr key={example.id} className="hover:bg-slate-50">
-                                    <td className="px-6 py-4 font-mono text-sm text-slate-900">{example.example_number}</td>
+                                    <td className="px-6 py-4 font-mono text-sm">{example.id}</td>
                                     <td className="px-6 py-4 text-sm font-medium">{example.name}</td>
                                     <td className="px-6 py-4 text-sm text-slate-500">{example.description}</td>
                                     <td className="px-6 py-4 flex gap-2">
@@ -316,14 +238,6 @@ export function ExamplesManager() {
                     </p>
                 </div>
             </SubConfigModal>
-
-            {/* Import Result Modal */}
-            <ImportResultModal
-                isOpen={!!importResult}
-                onClose={() => setImportResult(null)}
-                results={importResult}
-                title="Example Import Result"
-            />
         </div>
     );
 }
