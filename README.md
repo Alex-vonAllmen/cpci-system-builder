@@ -21,8 +21,16 @@ A modern, web-based configurator for CompactPCI (cPCI) systems. This application
 
 ## Tech Stack
 
-*   **Frontend**: React, TypeScript, Vite, Tailwind CSS, Zustand (State Management), React Router.
-*   **Backend**: FastAPI (Python), SQLAlchemy (SQLite), Pydantic.
+*   **Frontend**:
+    *   **Core**: React, TypeScript, Vite
+    *   **UI/Styling**: Tailwind CSS, Lucide React, clsx, tailwind-merge
+    *   **State Management**: Zustand
+    *   **Routing**: React Router
+    *   **Utilities**: jsPDF, jsPDF-AutoTable
+*   **Backend**:
+    *   **Framework**: FastAPI, Uvicorn
+    *   **Database**: SQLAlchemy (SQLite)
+    *   **Configuration**: Pydantic Settings
 
 ## Installation
 
@@ -136,27 +144,68 @@ Example Adjacency Rule:
 }
 ```
 
+## Deployment
+
+### Productive Environment (Linux + Apache)
+
+This deployment method uses Apache as a reverse proxy for the Backend (FastAPI) and to serve the Frontend (Static Files).
+
+**Prerequisites:**
+*   Linux Server (e.g., Ubuntu/Debian)
+*   Apache2
+*   Python 3.10+
+*   Node.js 18+
+
+**1. Setup Directory:**
+Clone the repository to `/var/www/cpci-system-builder`:
+```bash
+sudo git clone <repository-url> /var/www/cpci-system-builder
+sudo chown -R $USER:$USER /var/www/cpci-system-builder
+```
+
+**2. Configure Apache:**
+*   Enable required modules:
+    ```bash
+    sudo a2enmod rewrite proxy proxy_http ssl headers
+    ```
+*   Copy the site configuration:
+    ```bash
+    sudo cp /var/www/cpci-system-builder/deployment/cpci-site.conf /etc/apache2/sites-available/cpci-system.conf
+    ```
+*   Enable the site:
+    ```bash
+    sudo a2dissite 000-default.conf  # Optional: disable default
+    sudo a2ensite cpci-system.conf
+    sudo systemctl reload apache2
+    ```
+
+**3. Start Application:**
+You can use the provided startup script to build the frontend and start the backend:
+
+```bash
+cd /var/www/cpci-system-builder
+./deployment/start_prod.sh
+```
+
+**Note:** For a persistent production setup, it is recommended to run the backend as a systemd service.
+
+**Systemd Service Example (`/etc/systemd/system/cpci-backend.service`):**
+```ini
+[Unit]
+Description=duagon cPCI System Builder Backend
+After=network.target
+
+[Service]
+User=www-data
+WorkingDirectory=/var/www/cpci-system-builder/backend
+Environment="PATH=/var/www/cpci-system-builder/backend/venv/bin"
+ExecStart=/var/www/cpci-system-builder/backend/venv/bin/uvicorn app.main:app --host 127.0.0.1 --port 8000 --workers 4
+Restart=always
+
+[Install]
+WantedBy=multi-user.target
+```
+
 ## License
 
 Proprietary - duagon AG
-
-## ToDo
-
-
-- Add external interfaces available (e.g., 2x USB 3.2 Gen 2) - DONE
-- Power dependant requirement for fan tray - DONE
-- Matching product options to article numbers - DONE
-- Improve PDF quote generation
-- Instead of selecting slots at the beginning, you should select half- or full 19"-inch rack; information in centimeters instead of HP, U - DONE
-- Example configurations based on existings - DONE
-  - SBB Rack
-  - OMTS Rack
-  - SBB APFZ
-- Number of available PCIe lanes (e.g., two G506A with fat pipes) - DONE
-- Number of SATA lanes - DONE
-- Number of available USB ports - DONE
-
-## Issues
-- PDF quote only contains single prices
-- Example admin panel has id and example number. Formatting still strange.
-- Rule with G239 in slot 2 does not work if G28 is in slot 1 and extends to slot 2 - SOLVED
