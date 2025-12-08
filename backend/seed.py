@@ -557,6 +557,7 @@ def seed():
     # Seed Examples
     examples = [
         {
+            "id": "EX-01",
             "name": "Basic Control System",
             "description": "3U System with G25A CPU and Storage, ideal for industrial control.",
             "config_json": json.dumps({
@@ -580,6 +581,7 @@ def seed():
             "image_url": "https://www.duagon.com/fileadmin/_processed_/c/6/csm_G25A_front_1_d2b0c9c0c3.png"
         },
         {
+            "id": "EX-02",
             "name": "High Performance Data Logger",
             "description": "4U System with G28 CPU, multiple storage and network interfaces.",
             "config_json": json.dumps({
@@ -616,12 +618,13 @@ def seed():
     ]
 
     for ex_data in examples:
-        existing_ex = db.query(ExampleConfig).filter(ExampleConfig.name == ex_data["name"]).first()
+        existing_ex = db.query(ExampleConfig).filter(ExampleConfig.id == ex_data["id"]).first()
         if not existing_ex:
             print(f"Creating example: {ex_data['name']}")
             db.add(ExampleConfig(**ex_data))
         else:
             print(f"Updating example: {ex_data['name']}")
+            existing_ex.name = ex_data["name"]
             existing_ex.description = ex_data["description"]
             existing_ex.config_json = ex_data["config_json"]
             existing_ex.image_url = ex_data["image_url"]

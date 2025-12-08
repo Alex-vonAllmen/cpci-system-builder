@@ -173,7 +173,7 @@ export const api = {
             });
             return res.json();
         },
-        update: async (id: number, data: any) => {
+        update: async (id: string, data: any) => {
             const res = await fetch(`${API_BASE_URL}/examples/${id}`, {
                 method: 'PUT',
                 headers: getHeaders(),
@@ -181,11 +181,38 @@ export const api = {
             });
             return res.json();
         },
-        delete: async (id: number) => {
+        delete: async (id: string) => {
             await fetch(`${API_BASE_URL}/examples/${id}`, {
                 method: 'DELETE',
                 headers: getHeaders(),
             });
+        },
+        import: async (file: File) => {
+            const text = await file.text();
+            const json = JSON.parse(text);
+            const res = await fetch(`${API_BASE_URL}/examples/import`, {
+                method: 'POST',
+                headers: getHeaders(),
+                body: JSON.stringify(json),
+            });
+            return res.json();
+        },
+        export: async () => {
+            // Use export/all endpoint
+            // Usually we might want to transform it to a file download on server side, 
+            // but simply getting JSON and blobbing it works.
+            // Backend returns List[ExampleConfig]
+            const res = await fetch(`${API_BASE_URL}/examples/export/all`, {
+                headers: getHeaders()
+            });
+            // We want it as a blob (JSON file)
+            const data = await res.json(); // Get JSON first to pretty print? 
+            // Or just blob the raw response?
+            // api.products.export returns blob directly.
+            // But my backend returns JSON object.
+            // Cleaner:
+            const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
+            return blob;
         }
     },
     articles: {

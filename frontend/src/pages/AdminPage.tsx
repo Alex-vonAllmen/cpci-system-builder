@@ -332,7 +332,7 @@ export function AdminPage() {
                                 <h3 className="text-lg font-bold mb-4">{isEditing ? 'Edit Product' : 'New Product'}</h3>
                                 <form onSubmit={handleSaveProduct} className="grid grid-cols-2 gap-6">
                                     <div className="space-y-2">
-                                        <label className="text-sm font-medium text-slate-700">Part Number (ID)</label>
+                                        <label className="text-sm font-medium text-slate-700">Product number (ID)</label>
                                         <input
                                             required
                                             disabled={isEditing}
@@ -650,7 +650,7 @@ export function AdminPage() {
                             <table className="w-full text-left">
                                 <thead className="bg-slate-50 border-b border-slate-200">
                                     <tr>
-                                        <th className="px-6 py-3 text-sm font-medium text-slate-500">ID</th>
+                                        <th className="px-6 py-3 text-sm font-medium text-slate-500">Product ID</th>
                                         <th className="px-6 py-3 text-sm font-medium text-slate-500">Type</th>
                                         <th className="px-6 py-3 text-sm font-medium text-slate-500">Name</th>
                                         <th className="px-6 py-3 text-sm font-medium text-slate-500">Power</th>
