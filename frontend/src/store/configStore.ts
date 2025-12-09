@@ -203,7 +203,7 @@ export const useConfigStore = create<ConfigState>((set, get) => ({
     setSlotComponent: (slotId, componentId) => set((state) => {
         // 1. Find component and calculate width
         const product = state.products.find(p => p.id === componentId);
-        let width = product ? (product.width_hp || 4) : 4;
+        const width = product ? (product.width_hp || 4) : 4;
 
         // Special handling for Right-Aligned System Slot
         const isRightAlignedSystem = state.systemSlotPosition === 'right';

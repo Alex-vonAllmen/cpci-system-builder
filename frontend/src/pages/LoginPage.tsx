@@ -23,7 +23,7 @@ export function LoginPage() {
             const data = await api.auth.login(formData);
             login(data.access_token);
             navigate('/admin');
-        } catch (err) {
+        } catch {
             setError('Invalid username or password');
         }
     };
