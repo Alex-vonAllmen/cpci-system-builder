@@ -31,7 +31,7 @@ if [ ! -d "venv" ]; then
 fi
 
 echo "Activating virtual environment..."
-source venv/bin/activate
+source "$PROJECT_ROOT/venv/bin/activate"
 
 echo "Installing backend dependencies..."
 pip install -r requirements.txt
