@@ -39,7 +39,7 @@ interface ConfigState {
     getRemainingInterfaces: (state: any) => Record<string, number>;
 }
 
-export const useConfigStore = create<ConfigState>((set) => ({
+export const useConfigStore = create<ConfigState>((set, get) => ({
     slotCount: 21, // Default to 21 slots (84HP)
     systemSlotPosition: 'left', // Default to left
     chassisId: null,
@@ -433,7 +433,7 @@ export const useConfigStore = create<ConfigState>((set) => ({
             // Then we fill the end with empty peripheral slots.
 
             const contentSlots = newSlots.slice(shiftAmount);
-            const emptySlots = Array.from({ length: shiftAmount }, (_, i) => ({
+            const emptySlots = Array.from({ length: shiftAmount }, () => ({
                 id: 0, // temp
                 type: 'peripheral' as const,
                 componentId: null,
@@ -610,7 +610,7 @@ export const useConfigStore = create<ConfigState>((set) => ({
         }
     },
 
-    resetConfig: () => set((state) => ({
+    resetConfig: () => set(() => ({
         slotCount: 21,
         systemSlotPosition: 'left',
         chassisId: null,

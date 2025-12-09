@@ -45,7 +45,7 @@ export function SubConfigModal({ isOpen, onClose, onSave, onRemove, title, child
                         Cancel
                     </button>
                     <button
-                        onClick={() => onSave({})} // Placeholder for actual form data
+                        onClick={() => onSave?.({})} // Placeholder for actual form data
                         className={cn(
                             "px-4 py-2 text-sm font-medium text-white rounded-lg transition-colors",
                             saveButtonClass || "bg-duagon-blue hover:bg-duagon-blue/90"

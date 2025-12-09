@@ -1,5 +1,4 @@
-import { Link, Outlet } from 'react-router-dom';
-import { Settings, Cpu, Box, FileText } from 'lucide-react';
+
 
 export function Layout({ children }: { children: React.ReactNode }) {
     return (
@@ -32,11 +31,3 @@ export function Layout({ children }: { children: React.ReactNode }) {
     );
 }
 
-function NavLink({ to, icon, label }: { to: string; icon: React.ReactNode; label: string }) {
-    return (
-        <Link to={to} className="flex items-center gap-2 text-sm font-medium text-slate-600 hover:text-blue-600 transition-colors">
-            {icon}
-            {label}
-        </Link>
-    );
-}
