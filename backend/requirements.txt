@@ -2,4 +2,5 @@ fastapi
 uvicorn[standard]
 pydantic-settings
 sqlalchemy
+python-multipart
 # psycopg2-binary # Uncomment if using Postgres
