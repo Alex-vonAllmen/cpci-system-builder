@@ -42,6 +42,8 @@ export const api = {
                 eol_date: p.eol_date,
                 heightU: p.height_u,
                 externalInterfaces: p.external_interfaces,
+                providedInterfaces: p.provided_interfaces,
+                requiredInterfaces: p.required_interfaces,
             }));
         },
         create: async (data: any) => {

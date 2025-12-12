@@ -2,7 +2,7 @@ import { useConfigStore } from '../store/configStore';
 import { cn } from '../lib/utils';
 
 export function BackplaneVisualizer() {
-    const { slots } = useConfigStore();
+    const { slots, getSlotInterfaces } = useConfigStore();
 
     // Constants for SVG drawing
     const SLOT_WIDTH = 40;
@@ -38,17 +38,21 @@ export function BackplaneVisualizer() {
                     const isSystem = slot.type === 'system';
                     const isPsu = slot.type === 'psu';
 
+                    // Check bus connection
+                    const interfaces = getSlotInterfaces(slot.id);
+                    const hasBus = isSystem || isPsu || !!interfaces;
+
                     return (
                         <g key={slot.id} transform={`translate(${x}, ${y})`}>
                             {/* Slot Connector */}
                             <rect
                                 width={SLOT_WIDTH}
                                 height={SLOT_HEIGHT}
-                                fill={isSystem ? "#ef4444" : isPsu ? "#f97316" : "#3b82f6"}
+                                fill={isSystem ? "#ef4444" : isPsu ? "#f97316" : (hasBus ? "#3b82f6" : "#94a3b8")}
                                 rx={2}
                                 className={cn(
                                     "transition-colors duration-300",
-                                    isSystem ? "fill-red-500" : isPsu ? "fill-orange-500" : "fill-blue-500"
+                                    isSystem ? "fill-red-500" : isPsu ? "fill-orange-500" : (hasBus ? "fill-blue-500" : "fill-slate-400")
                                 )}
                             />
 
@@ -69,12 +73,12 @@ export function BackplaneVisualizer() {
                                 x={SLOT_WIDTH / 2}
                                 y={-10}
                                 textAnchor="middle"
-                                fill={isSystem ? "#fca5a5" : isPsu ? "#fdba74" : "#93c5fd"}
+                                fill={isSystem ? "#fca5a5" : isPsu ? "#fdba74" : (hasBus ? "#93c5fd" : "#cbd5e1")}
                                 fontSize="10"
                                 fontFamily="sans-serif"
                                 fontWeight="bold"
                             >
-                                {isSystem ? "SYS" : isPsu ? "PSU" : "PER"}
+                                {isSystem ? "SYS" : isPsu ? "PSU" : (hasBus ? "PER" : "N/C")}
                             </text>
 
                             {/* Connector Pins (Visual Detail) */}

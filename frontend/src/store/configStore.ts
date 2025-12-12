@@ -37,6 +37,8 @@ interface ConfigState {
     importConfig: (config: any) => void;
     validateRules: (state?: any, options?: { ignoreCategories?: string[] }) => string[];
     getRemainingInterfaces: (state: any) => Record<string, number>;
+    getSlotInterfaces: (slotId: number) => Record<string, string[]> | null; // Returns Map<Connector, InterfaceList> or null if no bus
+    getTotalExternalInterfaces: () => Record<string, { count: number, connectors: string[] }>;
 }
 
 export const useConfigStore = create<ConfigState>((set, get) => ({
@@ -665,27 +667,140 @@ export const useConfigStore = create<ConfigState>((set, get) => ({
         if (!systemSlot || !systemSlot.componentId) return remaining;
 
         const cpu = products.find((p: any) => p.id === systemSlot.componentId);
-        if (!cpu || !cpu.interfaces) return remaining;
+        if (!cpu || !cpu.provided_interfaces) return remaining;
 
-        // Initialize with CPU capacity
-        Object.entries(cpu.interfaces).forEach(([key, val]) => {
-            remaining[key] = Number(val);
+        // 1. Calculate Total Capacity from CPU's provided_interfaces
+        // provided_interfaces: Map<SlotOffset, Map<ConnectorID, InterfaceList>>
+        Object.values(cpu.provided_interfaces).forEach((connectors: any) => {
+            Object.values(connectors).forEach((intfList: any) => {
+                if (Array.isArray(intfList)) {
+                    intfList.forEach((intf: string) => {
+                        remaining[intf] = (remaining[intf] || 0) + 1;
+                    });
+                }
+            });
         });
 
-        // Subtract peripheral consumption
+        // 2. Subtract Peripheral Consumption
         slots.forEach((slot: any) => {
             if (slot.type === 'peripheral' && slot.componentId && !slot.blockedBy) {
                 const p = products.find((prod: any) => prod.id === slot.componentId);
-                if (p && p.interfaces) {
-                    Object.entries(p.interfaces).forEach(([key, val]) => {
-                        if (remaining[key] !== undefined) {
-                            remaining[key] -= Number(val);
+                if (p && p.required_interfaces) {
+                    // required_interfaces: Map<ConnectorID, InterfaceList>
+                    Object.values(p.required_interfaces).forEach((intfList: any) => {
+                        if (Array.isArray(intfList)) {
+                            intfList.forEach((intf: string) => {
+                                if (remaining[intf] !== undefined) {
+                                    remaining[intf] -= 1;
+                                }
+                            });
                         }
                     });
                 }
             }
         });
         return remaining;
+    },
+
+    getSlotInterfaces: (slotId: number) => {
+        const { slots, products, systemSlotPosition, slotCount } = get();
+
+        // 1. Find System Slot info
+        const systemSlot = slots.find(s => s.type === 'system');
+        // Handle case where system slot is multi-width:
+        // The "Origin" of the bus is the logical system slot. 
+        // For Left Aligned: It's the rightmost slot of the CPU? Or leftmost?
+        // Standard CPCI Serial: System Slot is usually on the LEFT (Slot 1).
+        // Peripheral slots are 2..9.
+        // If CPU is wide (4HP, 8HP), it still starts at Slot 1.
+        // The mapping provided (Offset 1, 2, 3...) usually corresponds to Physical Slot 2, 3, 4... relative to System Slot 1.
+
+        if (!systemSlot || !systemSlot.componentId) return null;
+
+        const cpu = products.find(p => p.id === systemSlot.componentId);
+        if (!cpu || !cpu.providedInterfaces) return null;
+
+        // 2. Calculate Offset
+        let offset = 0;
+        if (systemSlotPosition === 'left') {
+            // System is at Slot 1 (or covers 1..N).
+            // Peripherals start at SystemSlot + Width? 
+            // NO. The backplane is fixed. Slot 2 is Slot 2.
+            // If CPU is 8HP (covers Slot 1 and 2), then Slot 2 is NOT available for peripherals.
+            // But the backplane traces from System Slot (Logical Slot 1) to Slot 2, 3...
+            // If Slot 2 is physically blocked by the CPU itself, then Offset 1 is "consumed" by the CPU itself?
+            // OR does the big CPU provide interfaces starting from the next *available* slot?
+            // Usually, standard backplane: Slot 1 is System. Slot 2 is Peripheral.
+            // If you put an 8HP CPU in, you physically mask Slot 2.
+            // So Slot 3 is the first *usable* peripheral slot. 
+            // Slot 3 corresponds to Offset 2 from Slot 1.
+
+            // So Offset = slotId - systemSlot.id (assuming systemSlot.id is start index).
+            // Actually systemSlot.id is usually 1.
+            offset = Math.abs(slotId - systemSlot.id);
+        } else {
+            // Right aligned. System is at slotCount (e.g. 21).
+            // Peripheral slots are 20, 19...
+            // Offset 1 -> Slot 20.
+            offset = Math.abs(systemSlot.id - slotId);
+        }
+
+        // 3. Lookup
+        // providedInterfaces keys are strings "1", "2", ...
+        const intf = cpu.providedInterfaces[String(offset)];
+
+        // If offset is valid but no definition found (e.g. offset 9), return null (No Bus)
+        if (!intf) return null;
+
+        return intf;
+    },
+
+    getTotalExternalInterfaces: () => {
+        const { slots, products } = get();
+        const summary: Record<string, { count: number, connectors: string[] }> = {};
+
+        // Helper to accumulate
+        const add = (intfs: any[]) => {
+            if (!intfs) return;
+            intfs.forEach(item => {
+                // item: { type: "Ethernet", count: 2, connector: "RJ45", info: "1GbE" }
+                if (!summary[item.type]) {
+                    summary[item.type] = { count: 0, connectors: [] };
+                }
+                summary[item.type].count += (item.count || 1);
+
+                // Track usage specific details if needed (like "RJ45 (1GbE)")
+                const detail = `${item.connector || ''} ${item.info || ''}`.trim();
+                if (detail && !summary[item.type].connectors.includes(detail)) {
+                    summary[item.type].connectors.push(detail);
+                }
+            });
+        };
+
+        // 1. CPU (System Slot)
+        const systemSlot = slots.find(s => s.type === 'system');
+        if (systemSlot && systemSlot.componentId) {
+            const cpu = products.find(p => p.id === systemSlot.componentId);
+            if (cpu && cpu.external_interfaces) {
+                add(cpu.external_interfaces);
+            }
+        }
+
+        // 2. Peripherals
+        slots.forEach(slot => {
+            if (slot.type === 'peripheral' && slot.componentId && !slot.blockedBy) {
+                const product = products.find(p => p.id === slot.componentId);
+                // ALSO Check if slot is disconnected?
+                // Logic: A disconnected slot (No bus) usually can't function, so its interfaces are invalid?
+                // Or maybe it's passive I/O? 
+                // Let's assume valid for now to show what physical ports are present, even if data link is broken.
+                if (product && product.external_interfaces) {
+                    add(product.external_interfaces);
+                }
+            }
+        });
+
+        return summary;
     },
 
     validateRules: (proposedState?: ConfigState, options?: { ignoreCategories?: string[] }) => {

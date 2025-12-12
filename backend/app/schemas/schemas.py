@@ -19,10 +19,14 @@ class ProductBase(BaseModel):
     url: Optional[str] = None
     eol_date: Optional[str] = None
     height_u: Optional[int] = None
-    connectors: Optional[List[str]] = None
     options: Optional[Any] = None
-    interfaces: Optional[Dict[str, int]] = None
     external_interfaces: Optional[List[Dict[str, Any]]] = None
+    
+    # Internal Interfaces (Phase 2)
+    # Map<SlotOffset, Map<ConnectorID, List[Interface]>>
+    provided_interfaces: Optional[Dict[str, Dict[str, List[str]]]] = None 
+    # Map<ConnectorID, List[Interface]>
+    required_interfaces: Optional[Dict[str, List[str]]] = None
 
 class ProductCreate(ProductBase):
     pass

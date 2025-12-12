@@ -24,20 +24,22 @@ products = [
         "price_100": 2200,
         "price_250": 2100,
         "price_500": 2000,
-        "interfaces": {
-            "pcie_x4": 4,
-            "pcie_x1": 4,
-            "sata": 4,
-            "usb_2": 8,
-            "usb_3": 4,
-            "eth_1g": 2,
-            "gpio": 16
-        },
+
         "external_interfaces": [
             { "type": "Ethernet", "connector": "RJ45", "count": 2 },
             { "type": "USB", "connector": "Type-A", "count": 2 },
             { "type": "Display", "connector": "DisplayPort", "count": 1 }
         ],
+        "provided_interfaces": {
+            "1": { "P1": ["pcie_x8", "usb_3", "eth_1g"] },
+            "2": { "P1": ["pcie_x8", "usb_3"] },
+            "3": { "P1": ["pcie_x4", "usb_3", "eth_1g"] },
+            "4": { "P1": ["pcie_x4", "usb_3"] },
+            "5": { "P1": ["pcie_x4", "sata"] },
+            "6": { "P1": ["pcie_x4", "sata"] },
+            "7": { "P1": ["pcie_x1", "sata"] },
+            "8": { "P1": ["pcie_x1", "sata"] }
+        },
         "options": [
             {
                 "id": "ram",
@@ -75,19 +77,21 @@ products = [
         "price_100": 1650,
         "price_250": 1600,
         "price_500": 1550,
-        "interfaces": {
-            "pcie_x4": 8,
-            "pcie_x1": 8,
-            "sata": 4,
-            "usb_2": 8,
-            "usb_3": 6,
-            "eth_1g": 2,
-            "gpio": 16
-        },
+
         "external_interfaces": [
             { "type": "Ethernet", "connector": "RJ45", "count": 2 },
             { "type": "Display", "connector": "DisplayPort", "count": 2 }
         ],
+        "provided_interfaces": {
+            "1": { "P1": ["pcie_x8", "usb_3", "eth_1g"] },
+            "2": { "P1": ["pcie_x8", "usb_3"] },
+            "3": { "P1": ["pcie_x4", "usb_3", "eth_1g"] },
+            "4": { "P1": ["pcie_x4", "usb_3"] },
+            "5": { "P1": ["pcie_x4", "sata"] },
+            "6": { "P1": ["pcie_x4", "sata"] },
+            "7": { "P1": ["pcie_x1", "sata"] },
+            "8": { "P1": ["pcie_x1", "sata"] }
+        },
     },
     {
         "id": "G029M",
@@ -102,13 +106,16 @@ products = [
         "price_100": 2500,
         "price_250": 2400,
         "price_500": 2300,
-        "interfaces": {
-            "pcie_x8": 2,
-            "pcie_x4": 4,
-            "sata": 6,
-            "usb_3": 4,
-            "eth_10g": 2,
-            "gpio": 16
+
+        "provided_interfaces": {
+            "1": { "P1": ["pcie_x8", "usb_3"] },
+            "2": { "P1": ["pcie_x8", "usb_3"] },
+            "3": { "P1": ["pcie_x8", "usb_3"] }, 
+            "4": { "P1": ["pcie_x8", "usb_3"] },
+            "5": { "P1": ["pcie_x4", "sata"] },
+            "6": { "P1": ["pcie_x4", "sata"] },
+            "7": { "P1": ["pcie_x4", "sata"] },
+            "8": { "P1": ["pcie_x4", "sata"] }
         },
         "options": [
             {
@@ -136,9 +143,8 @@ products = [
         "price_100": 420,
         "price_250": 410,
         "price_500": 400,
-        "interfaces": {
-            "pcie_x4": 1
-        },
+
+        "required_interfaces": { "P1": ["pcie_x4"] },
         "options": [
             {
                 "id": "drive1",
@@ -166,9 +172,8 @@ products = [
         "price_100": 540,
         "price_250": 520,
         "price_500": 500,
-        "interfaces": {
-            "usb_3": 1
-        },
+
+        "required_interfaces": { "P1": ["usb_3"] },
         "options": [
             {
                 "id": "slot1",
@@ -239,9 +244,8 @@ products = [
         "price_100": 270,
         "price_250": 260,
         "price_500": 250,
-        "interfaces": {
-            "sata": 1
-        },
+
+        "required_interfaces": { "P1": ["sata"] },
         "options": []
     },
     {
@@ -257,9 +261,8 @@ products = [
         "price_100": 520,
         "price_250": 510,
         "price_500": 500,
-        "interfaces": {
-            "pcie_x1": 1
-        },
+
+        "required_interfaces": { "P1": ["pcie_x1"] },
         "external_interfaces": [
             { "type": "Ethernet", "connector": "RJ45", "count": 4 }
         ],
@@ -278,9 +281,8 @@ products = [
         "price_100": 370,
         "price_250": 360,
         "price_500": 350,
-        "interfaces": {
-            "pcie_x1": 1
-        },
+
+        "required_interfaces": { "P1": ["pcie_x1"] },
         "external_interfaces": [
             { "type": "Serial", "connector": "D-Sub", "count": 8 }
         ],
@@ -404,7 +406,7 @@ products = [
         "power_watts": -300,
         "width_hp": 8,
         "height_u": 3,
-        "connectors": ["AC Input"],
+
         "price_1": 200,
         "price_25": 190,
         "price_50": 180,
@@ -461,14 +463,7 @@ def seed():
         if "height_u" not in p_data:
             p_data["height_u"] = 3 # Default to 3U for cards
 
-        # Default connectors
-        if "connectors" not in p_data:
-            if p_data["type"] == "cpu":
-                p_data["connectors"] = ["P1", "P2", "P3", "P4", "P5", "P6"]
-            elif p_data["type"] in ["storage", "network", "io", "carrier"]:
-                p_data["connectors"] = ["P1"] # Minimum mandatory
-            else:
-                p_data["connectors"] = [] # Chassis, PSU, etc.
+
 
         
         # Check if exists

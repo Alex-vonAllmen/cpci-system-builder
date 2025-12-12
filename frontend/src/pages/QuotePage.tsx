@@ -10,7 +10,7 @@ import { useToast } from '../components/ui/Toast';
 import { BackplaneVisualizer } from '../components/BackplaneVisualizer';
 
 export function QuotePage() {
-    const { slots, chassisId, chassisOptions, psuId, psuOptions, products, articles, fetchProducts, resetConfig } = useConfigStore();
+    const { slots, chassisId, chassisOptions, psuId, psuOptions, products, articles, fetchProducts, resetConfig, getTotalExternalInterfaces } = useConfigStore();
     const [isSubmitting, setIsSubmitting] = useState(false);
     const [isSuccess, setIsSuccess] = useState(false);
     const navigate = useNavigate();
@@ -291,40 +291,15 @@ export function QuotePage() {
 
     const isPowerOverload = powerCapacity > 0 && powerConsumption > powerCapacity;
 
-    // --- 4. Interfaces ---
-    const aggregatedInterfaces: Record<string, { type: string, connector: string, count: number }> = {};
-    selectedItems.forEach(item => {
-        if (item.product.externalInterfaces) {
-            item.product.externalInterfaces.forEach(iface => {
-                const key = `${iface.type}-${iface.connector}`;
-                if (!aggregatedInterfaces[key]) aggregatedInterfaces[key] = { ...iface, count: 0 };
-                aggregatedInterfaces[key].count += iface.count;
-            });
-        }
-        if (item.product.options && item.options) {
-            Object.entries(item.options).forEach(([optId, optVal]) => {
-                const optDef = (item.product.options as any[]).find((o: any) => o.id === optId);
-                if (optDef) {
-                    let modInterfaces = null;
-                    if (optDef.type === 'select') {
-                        const choice = optDef.choices.find((c: any) => c.value === optVal);
-                        if (choice && choice.externalInterfacesMod) modInterfaces = choice.externalInterfacesMod;
-                    } else if (optDef.type === 'boolean' && optVal === true) {
-                        if (optDef.externalInterfacesMod) modInterfaces = optDef.externalInterfacesMod;
-                    }
-                    if (modInterfaces) {
-                        modInterfaces.forEach((iface: any) => {
-                            const key = `${iface.type}-${iface.connector}`;
-                            if (!aggregatedInterfaces[key]) aggregatedInterfaces[key] = { ...iface, count: 0 };
-                            aggregatedInterfaces[key].count += iface.count;
-                        });
-                    }
-                }
-            });
-        }
-    });
-
-    const sortedInterfaces = Object.values(aggregatedInterfaces).sort((a, b) => a.type.localeCompare(b.type));
+    // --- 4. Interfaces (Refactored) ---
+    const aggregatedInterfaceMap = getTotalExternalInterfaces();
+    const sortedInterfaces = Object.entries(aggregatedInterfaceMap)
+        .map(([type, data]) => ({
+            type,
+            count: data.count,
+            connectors: data.connectors.join(', ')
+        }))
+        .sort((a, b) => a.type.localeCompare(b.type));
 
     // --- PDF / Submit Handlers ---
     const generatePDF = async (returnBlob = false) => {
@@ -563,7 +538,7 @@ export function QuotePage() {
                                     <div key={idx} className="flex justify-between items-center p-3 bg-slate-50 rounded-lg border border-slate-100">
                                         <div>
                                             <div className="font-semibold text-slate-900">{iface.type}</div>
-                                            <div className="text-xs text-slate-500">{iface.connector}</div>
+                                            <div className="text-xs text-slate-500">{iface.connectors}</div>
                                         </div>
                                         <div className="text-xl font-bold text-slate-700">{iface.count}</div>
                                     </div>

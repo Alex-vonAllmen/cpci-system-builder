@@ -9,10 +9,11 @@ interface ComponentCardProps {
     onViewDetails: () => void;
     disabled?: boolean;
     forbidden?: boolean;
+    incompatible?: boolean;
     selectedOptions?: Record<string, any>;
 }
 
-export function ComponentCard({ product, isSelected, onSelect, onViewDetails, disabled, forbidden, selectedOptions }: ComponentCardProps) {
+export function ComponentCard({ product, isSelected, onSelect, onViewDetails, disabled, forbidden, incompatible, selectedOptions }: ComponentCardProps) {
     // Calculate total power and width including options
     let totalPower = product.powerWatts || 0;
     let totalWidth = product.widthHp || 0;
@@ -41,7 +42,8 @@ export function ComponentCard({ product, isSelected, onSelect, onViewDetails, di
                 isSelected
                     ? "border-duagon-blue bg-blue-50"
                     : "border-slate-200 bg-white hover:border-duagon-blue/50",
-                (disabled || forbidden) && "opacity-50 cursor-not-allowed hover:border-slate-200 hover:shadow-none bg-slate-50"
+                (disabled || forbidden) && "opacity-50 cursor-not-allowed hover:border-slate-200 hover:shadow-none bg-slate-50",
+                incompatible && "opacity-60 grayscale bg-slate-50 hover:border-amber-300 hover:bg-amber-50"
             )}
             onClick={() => !disabled && onSelect()}
         >
@@ -59,7 +61,9 @@ export function ComponentCard({ product, isSelected, onSelect, onViewDetails, di
             </div>
 
             <h3 className="font-bold text-slate-900 mb-1">{product.name}</h3>
-            <p className="text-sm text-slate-500 mb-4 line-clamp-2">{product.description}</p>
+            <p className="text-sm text-slate-500 mb-2 line-clamp-2">{product.description}</p>
+
+
 
             {/* Selected Options Display */}
             {product.options && selectedOptions && (

@@ -13,7 +13,10 @@ A modern, web-based configurator for CompactPCI (cPCI) systems. This application
     *   **Rules**: Define flexible JSON-based compatibility rules.
     *   **Articles**: Manage article numbers mapped to specific product configurations.
     *   **Settings**: Configure system-wide settings like the central quote email.
-*   **Internal Interfaces Management**: Track and validate internal interface usage (PCIe, SATA, USB, etc.) to ensure CPU capacity is not exceeded.
+*   **Internal Interfaces Management**:
+    *   **Capacity Tracking**: Track and validate internal interface usage (PCIe, SATA, USB, etc.) to ensure CPU capacity is not exceeded.
+    *   **Topology Enforcement**: Visual indication of slots that are disconnected from the system bus (e.g., beyond the capacity of the chosen CPU or backplane limit).
+    *   **Compatibility Filtering**: Automatically filters peripheral cards based on available interfaces at specific slots (e.g., a card requiring PCIe x8 won't show for a slot only providing PCIe x4).
 *   **External Interfaces Management**: Manage and summarize external physical connectors (Ethernet, USB, Serial, etc.) on the front/rear panel.
 *   **Quote Generation**: Generate PDF quotes with detailed configuration summaries.
 *   **Modern UI**: Built with React, Tailwind CSS, and Shadcn UI for a polished user experience.

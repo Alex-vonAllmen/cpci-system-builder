@@ -3,7 +3,7 @@ import { api } from '../services/api';
 import { SubConfigModal } from '../components/SubConfigModal';
 import { ExamplesManager } from '../components/ExamplesManager';
 import { ArticlesManager } from '../components/ArticlesManager';
-import { useToast } from '../components/ui/Toast'; // Corrected path for useToast
+import { useToast } from '../components/ui/Toast';
 import { Plus, Trash2, Edit, Download, Upload } from 'lucide-react';
 import { cn } from '../lib/utils';
 
@@ -58,6 +58,23 @@ export function AdminPage() {
         }
     };
 
+    // Constants
+    const INTERFACE_TYPES = [
+        { value: 'pcie_x1', label: 'PCIe x1' },
+        { value: 'pcie_x4', label: 'PCIe x4' },
+        { value: 'pcie_x8', label: 'PCIe x8' },
+        { value: 'pcie_x16', label: 'PCIe x16' },
+        { value: 'sata', label: 'SATA' },
+        { value: 'usb_2', label: 'USB 2.0' },
+        { value: 'usb_3', label: 'USB 3.0' },
+        { value: 'ethernet_1g', label: 'Ethernet 1G' },
+        { value: 'ethernet_10g', label: 'Ethernet 10G' },
+        { value: 'serial', label: 'Serial (UART)' },
+        { value: 'gpio', label: 'GPIO' },
+    ];
+
+    const CONNECTORS = ['P1', 'P2', 'P3', 'P4', 'P5', 'P6'];
+
     // New Product Form State
     const [newProduct, setNewProduct] = useState({
         id: '',
@@ -72,15 +89,22 @@ export function AdminPage() {
         price_100: 0,
         price_250: 0,
         price_500: 0,
-        options: '', // JSON string for editing
+        options: '', // JSON string
         eol_date: '',
         height_u: 0,
-        connectors: [] as string[],
-        interfaces: [] as { type: string, count: number }[], // Array for form handling
         externalInterfaces: [] as { type: string, connector: string, count: number }[],
         image_url: '',
         url: '',
     });
+
+    // Helper state for structured interface editing
+    // For CPU: Slot -> Connector -> [Interfaces]
+    // We flatten this to a list of definitions for the UI: { slot: 1, connector: 'P1', type: 'pcie_x4' }
+    const [providedInterfacesList, setProvidedInterfacesList] = useState<{ id: string, slot: number, connector: string, type: string }[]>([]);
+
+    // For Peripherals: Connector -> [Interfaces]
+    // Flattened: { connector: 'P1', type: 'pcie_x4' }
+    const [requiredInterfacesList, setRequiredInterfacesList] = useState<{ id: string, connector: string, type: string }[]>([]);
 
     const loadData = async () => {
         setIsLoading(true);
@@ -102,18 +126,33 @@ export function AdminPage() {
     const handleSaveProduct = async (e: React.FormEvent) => {
         e.preventDefault();
         try {
-            // Convert interfaces array to object
-            const interfacesObj: Record<string, number> = {};
-            newProduct.interfaces.forEach(i => {
-                if (i.type && i.count) {
-                    interfacesObj[i.type] = i.count;
-                }
-            });
+            // Reconstruct nested JSON for Provided Interfaces (CPU)
+            let provided_interfaces: Record<string, Record<string, string[]>> | null = null;
+            if (newProduct.type === 'cpu' && providedInterfacesList.length > 0) {
+                provided_interfaces = {};
+                providedInterfacesList.forEach(item => {
+                    const slot = String(item.slot);
+                    if (!provided_interfaces![slot]) provided_interfaces![slot] = {};
+                    if (!provided_interfaces![slot][item.connector]) provided_interfaces![slot][item.connector] = [];
+                    provided_interfaces![slot][item.connector].push(item.type);
+                });
+            }
+
+            // Reconstruct nested JSON for Required Interfaces (Peripherals)
+            let required_interfaces: Record<string, string[]> | null = null;
+            if (newProduct.type !== 'cpu' && requiredInterfacesList.length > 0) {
+                required_interfaces = {};
+                requiredInterfacesList.forEach(item => {
+                    if (!required_interfaces![item.connector]) required_interfaces![item.connector] = [];
+                    required_interfaces![item.connector].push(item.type);
+                });
+            }
 
             const productData = {
                 ...newProduct,
                 options: newProduct.options ? JSON.parse(newProduct.options) : null,
-                interfaces: Object.keys(interfacesObj).length > 0 ? interfacesObj : null,
+                provided_interfaces,
+                required_interfaces,
                 external_interfaces: newProduct.externalInterfaces.length > 0 ? newProduct.externalInterfaces : null,
             };
 
@@ -126,41 +165,23 @@ export function AdminPage() {
             setIsCreating(false);
             setIsEditing(false);
             loadData();
+            // Reset form
             setNewProduct({
-                id: '',
-                type: 'cpu',
-                name: '',
-                description: '',
-                power_watts: 0,
-                width_hp: 4,
-                price_1: 0,
-                price_25: 0,
-                price_50: 0,
-                price_100: 0,
-                price_250: 0,
-                price_500: 0,
-                options: '',
-                eol_date: '',
-                height_u: 0,
-                connectors: [],
-                interfaces: [],
-                externalInterfaces: [],
-                image_url: '',
-                url: '',
+                id: '', type: 'cpu', name: '', description: '', power_watts: 0, width_hp: 4,
+                price_1: 0, price_25: 0, price_50: 0, price_100: 0, price_250: 0, price_500: 0,
+                options: '', eol_date: '', height_u: 0, externalInterfaces: [], image_url: '', url: ''
             });
+            setProvidedInterfacesList([]);
+            setRequiredInterfacesList([]);
+
             toast.success(isEditing ? "Product updated successfully." : "Product created successfully.");
         } catch (error) {
             console.error('Failed to save product:', error);
-            toast.error('Failed to save product. Check console for details. Ensure Options is valid JSON.');
+            toast.error('Failed to save product. Check valid JSON in Options.');
         }
     };
 
     const handleEditProduct = (product: any) => {
-        // Convert interfaces object to array
-        const interfacesArray = product.interfaces
-            ? Object.entries(product.interfaces).map(([type, count]) => ({ type, count: Number(count) }))
-            : [];
-
         setNewProduct({
             id: product.id,
             type: product.type,
@@ -177,14 +198,37 @@ export function AdminPage() {
             options: product.options ? JSON.stringify(product.options, null, 2) : '',
             eol_date: product.eol_date || '',
             height_u: product.heightU || 0,
-            connectors: product.connectors || [],
-            interfaces: interfacesArray,
             externalInterfaces: product.externalInterfaces || [],
             image_url: product.image_url || '',
             url: product.url || '',
         });
+
+        // Parse Provided Interfaces (CPU)
+        const parsedProvided: { id: string, slot: number, connector: string, type: string }[] = [];
+        if (product.provided_interfaces) {
+            Object.entries(product.provided_interfaces).forEach(([slotStr, connectors]: [string, any]) => {
+                Object.entries(connectors).forEach(([conn, types]: [string, any]) => {
+                    types.forEach((t: string) => {
+                        parsedProvided.push({ id: Math.random().toString(36).substr(2, 9), slot: Number(slotStr), connector: conn, type: t });
+                    });
+                });
+            });
+        }
+        setProvidedInterfacesList(parsedProvided);
+
+        // Parse Required Interfaces (Peripherals)
+        const parsedRequired: { id: string, connector: string, type: string }[] = [];
+        if (product.required_interfaces) {
+            Object.entries(product.required_interfaces).forEach(([conn, types]: [string, any]) => {
+                types.forEach((t: string) => {
+                    parsedRequired.push({ id: Math.random().toString(36).substr(2, 9), connector: conn, type: t });
+                });
+            });
+        }
+        setRequiredInterfacesList(parsedRequired);
+
         setIsEditing(true);
-        setIsCreating(true); // Reuse the create modal
+        setIsCreating(true);
     };
 
     const handleDeleteProduct = async (id: string) => {
@@ -314,8 +358,10 @@ export function AdminPage() {
                                         setNewProduct({
                                             id: '', type: 'cpu', name: '', description: '', power_watts: 0, width_hp: 4,
                                             price_1: 0, price_25: 0, price_50: 0, price_100: 0, price_250: 0, price_500: 0,
-                                            options: '', eol_date: '', height_u: 0, connectors: [], interfaces: [], externalInterfaces: [], image_url: '', url: ''
+                                            options: '', eol_date: '', height_u: 0, externalInterfaces: [], image_url: '', url: ''
                                         });
+                                        setProvidedInterfacesList([]);
+                                        setRequiredInterfacesList([]);
                                         setIsEditing(false);
                                         setIsCreating(true);
                                     }}
@@ -429,103 +475,156 @@ export function AdminPage() {
                                         />
                                     </div>
 
-                                    <div className="col-span-2 space-y-2">
-                                        <label className="text-sm font-medium text-slate-700">Connectors Present</label>
-                                        <div className="flex gap-4">
-                                            {['P1', 'P2', 'P3', 'P4', 'P5', 'P6'].map(conn => (
-                                                <label key={conn} className="flex items-center gap-2 cursor-pointer">
-                                                    <input
-                                                        type="checkbox"
-                                                        className="w-4 h-4 text-blue-600 rounded border-slate-300 focus:ring-blue-500"
-                                                        checked={(newProduct.connectors || []).includes(conn)}
-                                                        onChange={e => {
-                                                            const current = newProduct.connectors || [];
-                                                            if (e.target.checked) {
-                                                                setNewProduct({ ...newProduct, connectors: [...current, conn].sort() });
-                                                            } else {
-                                                                setNewProduct({ ...newProduct, connectors: current.filter(c => c !== conn) });
-                                                            }
-                                                        }}
-                                                    />
-                                                    <span className="text-sm text-slate-700">{conn}</span>
-                                                </label>
-                                            ))}
-                                        </div>
-                                    </div>
-
-                                    <div className="col-span-2 space-y-2 border-t pt-4 mt-2">
-                                        <div className="flex justify-between items-center">
-                                            <label className="text-sm font-medium text-slate-700">Internal Interfaces (Backplane)</label>
-                                            <button
-                                                type="button"
-                                                onClick={() => setNewProduct({
-                                                    ...newProduct,
-                                                    interfaces: [...newProduct.interfaces, { type: '', count: 1 }]
-                                                })}
-                                                className="text-xs flex items-center gap-1 text-duagon-blue hover:underline"
-                                            >
-                                                <Plus size={14} /> Add Interface
-                                            </button>
-                                        </div>
-
-                                        {newProduct.interfaces.length === 0 && (
-                                            <p className="text-xs text-slate-500 italic">No internal interfaces defined.</p>
-                                        )}
-
-                                        <div className="space-y-2">
-                                            {newProduct.interfaces.map((iface, idx) => (
-                                                <div key={idx} className="flex gap-2 items-center">
-                                                    <select
-                                                        className="flex-1 px-3 py-2 border border-slate-300 rounded-lg text-sm"
-                                                        value={iface.type}
-                                                        onChange={e => {
-                                                            const newInterfaces = [...newProduct.interfaces];
-                                                            newInterfaces[idx].type = e.target.value;
-                                                            setNewProduct({ ...newProduct, interfaces: newInterfaces });
-                                                        }}
-                                                    >
-                                                        <option value="">Select Type...</option>
-                                                        <option value="pcie_x1">PCIe x1</option>
-                                                        <option value="pcie_x4">PCIe x4</option>
-                                                        <option value="pcie_x8">PCIe x8</option>
-                                                        <option value="pcie_x16">PCIe x16</option>
-                                                        <option value="sata">SATA</option>
-                                                        <option value="usb_2">USB 2.0</option>
-                                                        <option value="usb_3">USB 3.0</option>
-                                                        <option value="ethernet_1g">Ethernet 1G</option>
-                                                        <option value="ethernet_10g">Ethernet 10G</option>
-                                                        <option value="serial">Serial (UART)</option>
-                                                        <option value="gpio">GPIO</option>
-                                                    </select>
-                                                    <input
-                                                        type="number"
-                                                        className="w-24 px-3 py-2 border border-slate-300 rounded-lg text-sm"
-                                                        value={iface.count}
-                                                        onChange={e => {
-                                                            const newInterfaces = [...newProduct.interfaces];
-                                                            newInterfaces[idx].count = Number(e.target.value);
-                                                            setNewProduct({ ...newProduct, interfaces: newInterfaces });
-                                                        }}
-                                                        placeholder="Count"
-                                                    />
-                                                    <button
-                                                        type="button"
-                                                        onClick={() => {
-                                                            const newInterfaces = newProduct.interfaces.filter((_, i) => i !== idx);
-                                                            setNewProduct({ ...newProduct, interfaces: newInterfaces });
-                                                        }}
-                                                        className="text-red-500 hover:text-red-700 p-2"
-                                                    >
-                                                        <Trash2 size={16} />
-                                                    </button>
+                                    {newProduct.type === 'cpu' ? (
+                                        <div className="col-span-2 space-y-2 border-t pt-4 mt-2">
+                                            <label className="text-sm font-medium">Provided Interfaces (CPU)</label>
+                                            <div className="bg-slate-50 p-3 rounded-lg border border-slate-200 space-y-3">
+                                                <div className="grid grid-cols-12 gap-2 text-xs font-semibold text-slate-500">
+                                                    <div className="col-span-2">Slot Offset</div>
+                                                    <div className="col-span-2">Connector</div>
+                                                    <div className="col-span-6">Interface Type</div>
+                                                    <div className="col-span-2">Action</div>
                                                 </div>
-                                            ))}
+
+                                                {/* Add New Row */}
+                                                <div className="grid grid-cols-12 gap-2 items-center">
+                                                    <div className="col-span-2">
+                                                        <input
+                                                            type="number"
+                                                            placeholder="Slot"
+                                                            className="w-full px-2 py-1.5 border rounded text-sm"
+                                                            id="new-provided-slot"
+                                                            defaultValue="1"
+                                                        />
+                                                    </div>
+                                                    <div className="col-span-2">
+                                                        <select className="w-full px-2 py-1.5 border rounded text-sm" id="new-provided-conn">
+                                                            {CONNECTORS.map(c => <option key={c} value={c}>{c}</option>)}
+                                                        </select>
+                                                    </div>
+                                                    <div className="col-span-6">
+                                                        <select className="w-full px-2 py-1.5 border rounded text-sm" id="new-provided-type">
+                                                            {INTERFACE_TYPES.map(t => <option key={t.value} value={t.value}>{t.label}</option>)}
+                                                        </select>
+                                                    </div>
+                                                    <div className="col-span-2">
+                                                        <button
+                                                            type="button"
+                                                            className="flex items-center gap-1 text-xs bg-duagon-blue text-white px-2 py-1.5 rounded hover:bg-duagon-blue/90 w-full justify-center"
+                                                            onClick={() => {
+                                                                const slotEl = document.getElementById('new-provided-slot') as HTMLInputElement;
+                                                                const connEl = document.getElementById('new-provided-conn') as HTMLSelectElement;
+                                                                const typeEl = document.getElementById('new-provided-type') as HTMLSelectElement;
+                                                                if (slotEl && connEl && typeEl) {
+                                                                    setProvidedInterfacesList([...providedInterfacesList, {
+                                                                        id: Math.random().toString(36).substr(2, 9),
+                                                                        slot: Number(slotEl.value),
+                                                                        connector: connEl.value,
+                                                                        type: typeEl.value
+                                                                    }]);
+                                                                }
+                                                            }}
+                                                        >
+                                                            <Plus size={12} /> Add
+                                                        </button>
+                                                    </div>
+                                                </div>
+
+                                                {/* List */}
+                                                <div className="space-y-1">
+                                                    {providedInterfacesList.map(item => (
+                                                        <div key={item.id} className="grid grid-cols-12 gap-2 items-center bg-white p-2 rounded border border-slate-100">
+                                                            <div className="col-span-2 text-sm text-slate-700">Offset {item.slot}</div>
+                                                            <div className="col-span-2 text-sm font-mono text-slate-600 font-bold">{item.connector}</div>
+                                                            <div className="col-span-6 text-sm text-slate-600">
+                                                                {INTERFACE_TYPES.find(t => t.value === item.type)?.label || item.type}
+                                                            </div>
+                                                            <div className="col-span-2 text-center">
+                                                                <button
+                                                                    type="button"
+                                                                    onClick={() => setProvidedInterfacesList(providedInterfacesList.filter(i => i.id !== item.id))}
+                                                                    className="text-red-500 hover:text-red-700 p-1"
+                                                                >
+                                                                    <Trash2 size={16} />
+                                                                </button>
+                                                            </div>
+                                                        </div>
+                                                    ))}
+                                                    {providedInterfacesList.length === 0 && (
+                                                        <div className="text-center text-xs text-slate-400 py-2">No provided interfaces defined.</div>
+                                                    )}
+                                                </div>
+                                            </div>
                                         </div>
-                                        <p className="text-xs text-slate-500">
-                                            For CPUs, this defines <strong>capacity</strong> (positive). For peripherals, this defines <strong>consumption</strong> (positive).
-                                            The system will subtract peripheral consumption from CPU capacity.
-                                        </p>
-                                    </div>
+                                    ) : (
+                                        <div className="col-span-2 space-y-2 border-t pt-4 mt-2">
+                                            <label className="text-sm font-medium">Required Interfaces (Peripherals)</label>
+                                            <div className="bg-slate-50 p-3 rounded-lg border border-slate-200 space-y-3">
+                                                <div className="grid grid-cols-12 gap-2 text-xs font-semibold text-slate-500">
+                                                    <div className="col-span-3">Connector</div>
+                                                    <div className="col-span-7">Interface Type</div>
+                                                    <div className="col-span-2">Action</div>
+                                                </div>
+
+                                                {/* Add New Row */}
+                                                <div className="grid grid-cols-12 gap-2 items-center">
+                                                    <div className="col-span-3">
+                                                        <select className="w-full px-2 py-1.5 border rounded text-sm" id="new-required-conn">
+                                                            {CONNECTORS.map(c => <option key={c} value={c}>{c}</option>)}
+                                                        </select>
+                                                    </div>
+                                                    <div className="col-span-7">
+                                                        <select className="w-full px-2 py-1.5 border rounded text-sm" id="new-required-type">
+                                                            {INTERFACE_TYPES.map(t => <option key={t.value} value={t.value}>{t.label}</option>)}
+                                                        </select>
+                                                    </div>
+                                                    <div className="col-span-2">
+                                                        <button
+                                                            type="button"
+                                                            className="flex items-center gap-1 text-xs bg-indigo-600 text-white px-2 py-1.5 rounded hover:bg-indigo-700 w-full justify-center"
+                                                            onClick={() => {
+                                                                const connEl = document.getElementById('new-required-conn') as HTMLSelectElement;
+                                                                const typeEl = document.getElementById('new-required-type') as HTMLSelectElement;
+                                                                if (connEl && typeEl) {
+                                                                    setRequiredInterfacesList([...requiredInterfacesList, {
+                                                                        id: Math.random().toString(36).substr(2, 9),
+                                                                        connector: connEl.value,
+                                                                        type: typeEl.value
+                                                                    }]);
+                                                                }
+                                                            }}
+                                                        >
+                                                            <Plus size={12} /> Add
+                                                        </button>
+                                                    </div>
+                                                </div>
+
+                                                {/* List */}
+                                                <div className="space-y-1">
+                                                    {requiredInterfacesList.map(item => (
+                                                        <div key={item.id} className="grid grid-cols-12 gap-2 items-center bg-white p-2 rounded border border-slate-100">
+                                                            <div className="col-span-3 text-sm font-mono text-slate-600 font-bold">{item.connector}</div>
+                                                            <div className="col-span-7 text-sm text-slate-600">
+                                                                {INTERFACE_TYPES.find(t => t.value === item.type)?.label || item.type}
+                                                            </div>
+                                                            <div className="col-span-2 text-center">
+                                                                <button
+                                                                    type="button"
+                                                                    onClick={() => setRequiredInterfacesList(requiredInterfacesList.filter(i => i.id !== item.id))}
+                                                                    className="text-red-500 hover:text-red-700 p-1"
+                                                                >
+                                                                    <Trash2 size={16} />
+                                                                </button>
+                                                            </div>
+                                                        </div>
+                                                    ))}
+                                                    {requiredInterfacesList.length === 0 && (
+                                                        <div className="text-center text-xs text-slate-400 py-2">No required interfaces defined.</div>
+                                                    )}
+                                                </div>
+                                            </div>
+                                        </div>
+                                    )}
 
                                     <div className="col-span-2 space-y-2 border-t pt-4 mt-2">
                                         <div className="flex justify-between items-center">

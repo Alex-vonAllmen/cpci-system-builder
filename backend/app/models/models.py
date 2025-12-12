@@ -21,10 +21,12 @@ class Product(Base):
     url = Column(String, nullable=True)
     eol_date = Column(String, nullable=True) # YYYY-MM-DD
     height_u = Column(Integer, nullable=True) # Rack Unit Height (3 or 4)
-    connectors = Column(JSON, nullable=True) # List of strings ["P1", "P2", ...]
     options = Column(JSON, nullable=True)  # e.g., {"conformal_coating": true}
-    interfaces = Column(JSON, nullable=True) # { "pcie_x1": 2, "sata": 1, ... }
     external_interfaces = Column(JSON, nullable=True) # [{ "type": "Ethernet", "connector": "RJ45", "count": 1 }]
+    
+    # Internal Interfaces (Phase 2)
+    provided_interfaces = Column(JSON, nullable=True) # Map<SlotOffset, Map<ConnectorID, InterfaceList>>
+    required_interfaces = Column(JSON, nullable=True) # Map<ConnectorID, InterfaceList>
 
     # Relationships can be added here if needed
 

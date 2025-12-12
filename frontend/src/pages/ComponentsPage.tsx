@@ -12,63 +12,80 @@ import { cn } from '../lib/utils';
 import { useToast } from '../components/ui/Toast';
 
 export function ComponentsPage() {
-    const { slots, setSlotComponent, setSlotOptions, products, fetchProducts, validateRules, getRemainingInterfaces } = useConfigStore();
-    const [selectedSlotId, setSelectedSlotId] = useState<number | null>(() => {
-        // Initialize with first valid non-PSU slot
-        const state = useConfigStore.getState();
-        const firstValid = state.slots.find(s => s.type !== 'psu' && !s.blockedBy);
-        return firstValid ? firstValid.id : 1;
-    });
-    const [categoryFilter, setCategoryFilter] = useState<string>('All');
     const toast = useToast();
+    const { slots, setSlotComponent, setSlotOptions, products, fetchProducts, validateRules, getRemainingInterfaces, getSlotInterfaces } = useConfigStore();
+    const [selectedSlotId, setSelectedSlotId] = useState<number | null>(() => {
+        const sysSlot = useConfigStore.getState().slots.find(s => s.type === 'system');
+        return sysSlot ? sysSlot.id : 1;
+    });
 
-    useEffect(() => {
-        // Ensure we don't start with a blocked slot if state changed
-        if (selectedSlotId) {
-            const slot = slots.find(s => s.id === selectedSlotId);
-            if (slot && (slot.type === 'psu' || slot.blockedBy)) {
-                const firstValid = slots.find(s => s.type !== 'psu' && !s.blockedBy);
-                if (firstValid) setSelectedSlotId(firstValid.id);
-            }
-        }
-        fetchProducts();
-    }, [fetchProducts, slots, selectedSlotId]);
-
-    // Modal State
-    const [configuringProduct, setConfiguringProduct] = useState<Product | null>(null);
-    const [viewingProduct, setViewingProduct] = useState<Product | null>(null);
-    const [tempOptions, setTempOptions] = useState<Record<string, any>>({});
-    const [isEditingExisting, setIsEditingExisting] = useState(false);
-
-    const currentSlot = slots.find(s => s.id === selectedSlotId);
+    // Derived state
+    const currentSlot = selectedSlotId ? slots.find(s => s.id === selectedSlotId) : null;
     const isSystemSlot = currentSlot?.type === 'system';
     const isBlocked = !!currentSlot?.blockedBy;
 
-    // Calculate available slots based on Chassis and PSU
-    // const chassis = products.find(p => p.id === chassisId); // Unused
+    const [viewingProduct, setViewingProduct] = useState<Product | null>(null);
+    const [configuringProduct, setConfiguringProduct] = useState<Product | null>(null);
+    const [isEditingExisting, setIsEditingExisting] = useState(false);
+    const [tempOptions, setTempOptions] = useState<any>({});
 
-    // Filter products based on slot type and category
-    const availableProducts = products.filter((p: Product) => {
-        // 1. System Slot Check
-        if (isSystemSlot) return p.type === 'cpu';
-        if (p.type === 'cpu') return false; // CPUs only in system slot
-        if (currentSlot?.type === 'psu') return false; // Fail-safe: no products for PSU slots
+    const [categoryFilter, setCategoryFilter] = useState<string>('All');
 
-        // 2. Category Filter
-        if (['chassis', 'psu'].includes(p.type)) return false;
+    // Load products on mount
+    useEffect(() => {
+        fetchProducts();
+    }, [fetchProducts]);
 
-        if (categoryFilter !== 'All') {
-            if (categoryFilter === 'Storage' && p.type !== 'storage') return false;
-            if (categoryFilter === 'Network' && p.type !== 'network') return false;
-            if (categoryFilter === 'I/O' && p.type !== 'io') return false;
-            if (categoryFilter === 'Miscellaneous' && p.type !== 'miscellaneous') return false;
+
+
+    const providedInterfaces = selectedSlotId ? getSlotInterfaces(selectedSlotId) : null;
+
+    // Helper: Check compatibility and return reason if incompatible
+    const checkCompatibility = (p: Product, interfaces: any): { compatible: boolean, reason?: string, missing?: string[] } => {
+        if (isSystemSlot) {
+            return p.type === 'cpu'
+                ? { compatible: true }
+                : { compatible: false, reason: "Only CPU boards can be placed in the System Slot." };
         }
 
-        return true;
-    });
+        if (p.type === 'cpu') {
+            return { compatible: false, reason: "CPU boards can only be placed in the System Slot (Slot 1)." };
+        }
+
+        if (currentSlot?.type === 'psu') return { compatible: false, reason: "Slot reserved for PSU." };
+
+        // Category Filter logic (still strict hiding? No, user said "show all available components but grey out incompatible")
+        // But "available" usually implies category filter is active. 
+        // Let's assume Category Filter limits the VIEW, but Compatibility dims items WITHIN that view.
+        // So we keep category filtering as HARD filter for UX cleanliness (user selected a tab), 
+        // but Interface Compatibility as SOFT filter (dimming).
+
+        if (p.requiredInterfaces && Object.keys(p.requiredInterfaces).length > 0) {
+            if (!interfaces) return { compatible: false, reason: "Slot has no bus connection to System Slot." };
+
+            const missing: string[] = [];
+            for (const [connector, requiredList] of Object.entries(p.requiredInterfaces)) {
+                const providedList = interfaces[connector];
+                if (!providedList) {
+                    missing.push(`${connector} (Not present)`);
+                    continue;
+                }
+                const missingIntfs = (requiredList as string[]).filter(req => !providedList.includes(req));
+                if (missingIntfs.length > 0) {
+                    missing.push(`${connector}: ${missingIntfs.join(', ')}`);
+                }
+            }
+
+            if (missing.length > 0) {
+                return { compatible: false, reason: "Missing required interfaces:", missing };
+            }
+        }
+
+        return { compatible: true };
+    };
 
     // Helper to check if a product is forbidden for the current slot
-    const isProhibited = (product: Product) => {
+    function isProhibited(product: Product) {
         if (!currentSlot) return false;
         const proposedState = {
             ...useConfigStore.getState(),
@@ -76,11 +93,110 @@ export function ComponentsPage() {
         };
         // Ignore chassis compliance rules (like Fan Tray) during component selection
         return validateRules(proposedState, { ignoreCategories: ['chassis_compliance'] }).length > 0;
+    }
+
+    // Helper to get rule violation reason (duplicated logic slightly from isProhibited but we need msg)
+    function prohibitReason(product: Product) {
+        if (!currentSlot) return null;
+        const proposedState = {
+            ...useConfigStore.getState(),
+            slots: slots.map(s => s.id === currentSlot.id ? { ...s, componentId: product.id } : s)
+        };
+        const violations = validateRules(proposedState, { ignoreCategories: ['chassis_compliance'] });
+        return violations.length > 0 ? violations[0] : null;
+    }
+
+    // Filter products based on slot type and category
+    // We Map products to include compatibility info
+    const visibleProducts = products
+        .filter((p: Product) => {
+            // 1. Basic Type Hygiene (Keep this strict to avoid clutter? Or show all?)
+            // Showing Chassis products in slot selection is wrong.
+            if (['chassis', 'psu'].includes(p.type)) return false;
+
+            // 2. System Slot Rules
+            if (isSystemSlot) {
+                // System slot: Show ONLY CPUs
+                return p.type === 'cpu';
+            } else {
+                // Peripheral slot: Show everything EXCEPT CPUs
+                if (p.type === 'cpu') return false;
+            }
+
+            // 3. Category Filter (Keep strict as it helps user find things)
+            if (categoryFilter !== 'All') {
+                if (categoryFilter === 'Storage' && p.type !== 'storage') return false;
+                if (categoryFilter === 'Network' && p.type !== 'network') return false;
+                if (categoryFilter === 'I/O' && p.type !== 'io') return false;
+                if (categoryFilter === 'Miscellaneous' && p.type !== 'miscellaneous') return false;
+            }
+            return true;
+        })
+        .map(p => {
+            const { compatible, reason, missing } = checkCompatibility(p, providedInterfaces);
+            // Also check 'isProhibited' (Rule Engine)
+            const prohibited = isProhibited(p);
+
+            return {
+                ...p,
+                isCompatible: compatible && !prohibited,
+                incompatibilityReason: prohibitReason(p) || reason, // Prioritize rule reason? Helper above returns bool.
+                missingInterfaces: missing
+            };
+        });
+
+    const handleSlotClick = (slotId: number) => {
+        const slot = slots.find(s => s.id === slotId);
+        if (!slot) return;
+        if (slot.blockedBy) return;
+        if (slot.type === 'psu') return; // PSU handling elsewhere or disabled
+
+        // WARN if navigating away from System Slot without CPU
+        // Check if CPU is selected
+        const cpuSlot = slots.find(s => s.type === 'system');
+        const hasCpu = !!cpuSlot?.componentId;
+
+        if (slot.type === 'peripheral' && !hasCpu) {
+            toast.error("Please select a System CPU first to determine available interfaces for peripheral slots.");
+            // We allow navigation but the warning is shown. 
+            // Or should we block? User said "Show a warning...". 
+            // Often implied as "don't forbid but warn". 
+            // But without CPU, interface compatibility is unknown (null).
+            // So everything will be incompatible.
+        }
+
+        setSelectedSlotId(slotId);
     };
 
-    const handleSelectProduct = (product: Product) => {
+    const handleSelectProduct = (product: Product & { isCompatible?: boolean, incompatibilityReason?: string, missingInterfaces?: string[] }) => {
         if (selectedSlotId === null) return;
-        if (currentSlot?.type === 'psu') return; // Double check
+        if (currentSlot?.type === 'psu') return;
+
+        // Compatibility Check
+        if (product.isCompatible === false) {
+            // Find compatible slots
+            const compatibleSlots = slots.filter(s => {
+                if (s.type === 'system' || s.type === 'psu' || s.blockedBy) return false;
+                // Check interfaces for this slot
+                const intfs = getSlotInterfaces(s.id);
+                return checkCompatibility(product, intfs).compatible;
+            });
+
+            const slotList = compatibleSlots.length > 0
+                ? compatibleSlots.map(s => `Slot ${s.id}`).join(', ')
+                : "None available";
+
+            const reasonMsg = product.incompatibilityReason
+                ? `${product.incompatibilityReason}`
+                : "Unknown incompatibility";
+
+            const detailMsg = product.missingInterfaces && product.missingInterfaces.length > 0
+                ? `\nMissing: ${product.missingInterfaces.join(', ')}`
+                : "";
+
+            toast.error(`Incompatible Component\n${reasonMsg}${detailMsg}\n\nCompatible Slots: ${slotList}`);
+            return;
+        }
 
         const isAlreadySelected = currentSlot?.componentId === product.id;
 
@@ -88,35 +204,19 @@ export function ComponentsPage() {
             // Edit existing component
             setConfiguringProduct(product);
             setIsEditingExisting(true);
-            // Initialize with CURRENT options
             setTempOptions(currentSlot?.selectedOptions || {});
             return;
         }
 
-        // Check rules
-        if (isProhibited(product)) {
-            const proposedState = {
-                ...useConfigStore.getState(),
-                slots: slots.map(s => s.id === currentSlot?.id ? { ...s, componentId: product.id } : s)
-            };
-            // Ignore chassis compliance rules (like Fan Tray) during component selection
-            const violations = validateRules(proposedState, { ignoreCategories: ['chassis_compliance'] });
-            toast.error(`Cannot select this component:\n- ${violations.join('\n- ')}`);
-            return;
-        }
-
         if (product.options && product.options.length > 0) {
-            // Open modal for configuration (New selection)
             setConfiguringProduct(product);
             setIsEditingExisting(false);
-            // Initialize default options
             const defaults: Record<string, any> = {};
             product.options.forEach(opt => {
                 defaults[opt.id] = opt.default;
             });
             setTempOptions(defaults);
         } else {
-            // Direct selection
             setSlotComponent(selectedSlotId, product.id);
         }
     };
@@ -258,7 +358,7 @@ export function ComponentsPage() {
                                     return (
                                         <button
                                             key={slot.id}
-                                            onClick={() => !isSlotDisabled && !isSlotBlocked && setSelectedSlotId(slot.id)}
+                                            onClick={() => !isSlotDisabled && !isSlotBlocked && handleSlotClick(slot.id)}
                                             disabled={isSlotDisabled || isSlotBlocked}
                                             className={cn(
                                                 "h-10 rounded-lg text-sm font-bold transition-all border-2 relative",
@@ -303,7 +403,9 @@ export function ComponentsPage() {
                                     ? "This slot is occupied by the Pluggable PSU."
                                     : isSystemSlot
                                         ? "Select a CPU board for the system controller."
-                                        : "Select a peripheral card (Storage, Network, I/O)."
+                                        : !providedInterfaces
+                                            ? "No bus connection available at this slot. Only passive components allowed."
+                                            : "Select a peripheral card (Storage, Network, I/O)."
                             }
                         </p>
                     </div>
@@ -375,14 +477,17 @@ export function ComponentsPage() {
                         </div>
 
                         <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
-                            {availableProducts.map(product => (
+                            {visibleProducts.map(product => (
                                 <ComponentCard
                                     key={product.id}
                                     product={product}
                                     isSelected={currentSlot?.componentId === product.id}
                                     onSelect={() => handleSelectProduct(product)}
                                     onViewDetails={() => setViewingProduct(product)}
-                                    forbidden={isProhibited(product)}
+                                    incompatible={!product.isCompatible}
+                                    forbidden={isProhibited(product)} // Kept for legacy rule engine, but isCompatible covers most now? 
+                                    // Actually isProhibited logic is now folded into isCompatible, but pass explicit forbidden if needed visually?
+                                    // Let's rely on incompatible prop for dimming.
                                     selectedOptions={currentSlot?.componentId === product.id ? currentSlot?.selectedOptions : undefined}
                                 />
                             ))}
@@ -397,7 +502,7 @@ export function ComponentsPage() {
                         </div>
                     )}
 
-                    {availableProducts.length === 0 && !isBlocked && (
+                    {visibleProducts.length === 0 && !isBlocked && (
                         <div className="flex flex-col items-center justify-center h-64 text-slate-400">
                             <AlertCircle size={48} className="mb-4 opacity-50" />
                             <p>No compatible components found for this slot.</p>
